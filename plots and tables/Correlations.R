@@ -27,7 +27,7 @@
 # PLOTS OF CORRELATION COEFFICIENTS
 # OF THE PROJECTED NORMAL DISTRIBUTION
 #################################################
-dir_plot <- "/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/Applicazioni/Overleaf/Projected Normal Distributions on Torus/Figures/"
+dir_plot <- "plots and tables/out/"
 # library(cubature)
 library(doParallel)
 library(foreach)

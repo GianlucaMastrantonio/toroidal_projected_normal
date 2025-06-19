@@ -4,7 +4,7 @@ library(dplyr)
 library(ggpubr)
 library(gridExtra)
 
-dir_plot <- "/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/Applicazioni/Overleaf/Projected Normal Distributions on Torus/Figures/"
+dir_plot <- "plots and tables/out/"
 
 # ========
 # PN
