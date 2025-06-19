@@ -105,7 +105,7 @@ mcmc_cwc <- function(
     {
         for (iobs in 1:n)
         {
-            theta_cop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_mcmc[id])
+            theta_cop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id])
         }
     }
     for (id in 1:d)
@@ -150,66 +150,88 @@ mcmc_cwc <- function(
             #    cumulative_wrappedcauchy[id, ] <- func_cdf_wc(theta_seq, mu_mcmc[id], rho_mcmc[id])
             # }
             ### missing
-            # if (there_are_na) {
+            if (there_are_na) {
+                # for (id in 1:d)
+                # {
+                #    for (iobs in na_index[[id]])
+                #    {
+                #        cond_var_c <- 1 / lambda_c_mcmc[id, id]
+                #        cond_var_s <- 1 / lambda_s_mcmc[id, id]
 
-            #    x_s_prop <- x_s_mcmc
-            #    x_c_prop <- x_c_mcmc
-            #    theta_cop_prop <- theta_cop
-            #    for (id in 1:d)
-            #    {
-            #        for (iobs in na_index[[id]])
-            #        {
-            #            cond_var_c <- 1 / lambda_c_mcmc[id, id]
-            #            cond_var_s <- 1 / lambda_s_mcmc[id, id]
+                #        cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
+                #        cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
 
-            #            cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
-            #            cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
+                #        x_c_mcmc[iobs, id] <- rnorm(1, cond_mean_c, cond_var_c^0.5)
+                #        x_s_mcmc[iobs, id] <- rnorm(1, cond_mean_s, cond_var_s^0.5)
+
+                #        r_mcmc[iobs, id] <- sqrt((x_c_mcmc[iobs, id]^2 + x_s_mcmc[iobs, id]^2))
+                #        theta_cop[iobs, id] <- atan2(x_s_mcmc[iobs, id], x_c_mcmc[iobs, id])
+
+                #        # w_copula <- which(cumulative_wrappedcauchy[id, k, ] >= (theta_cop[iobs, id] / (2 * pi)))[1]
+
+                #        w_copula <- which.min(abs(cumulative_wrappedcauchy[id, ] - (theta_cop[iobs, id] / (2 * pi))))
+                #        theta[iobs, id] <- theta_seq[w_copula]
+                #        theta_cop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id])
+                #    }
+                # }
+                x_s_prop <- x_s_mcmc
+                x_c_prop <- x_c_mcmc
+                theta_cop_prop <- theta_cop
+                for (id in 1:d)
+                {
+                    for (iobs in na_index[[id]])
+                    {
+                        cond_var_c <- 1 / lambda_c_mcmc[id, id]
+                        cond_var_s <- 1 / lambda_s_mcmc[id, id]
+
+                        cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
+                        cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
 
 
-            #            theta_prop <- rnorm(1, theta[iobs, id], sample(c(0.5, 0.1, 0.05, 0.01), 1)) %% (2 * pi)
+                        theta_prop <- rnorm(1, theta[iobs, id], sample(c(0.5, 0.1, 0.05, 0.01), 1)) %% (2 * pi)
 
 
-            #            theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta_prop, mu_mcmc[id], rho_mcmc[id])
-            #            x_s_prop[iobs, id] <- r_mcmc[iobs, id] * sin(theta_cop_prop[iobs, id])
-            #            x_c_prop[iobs, id] <- r_mcmc[iobs, id] * cos(theta_cop_prop[iobs, id])
+                        theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta_prop, mu_mcmc[id], rho_mcmc[id])
+                        x_s_prop[iobs, id] <- r_mcmc[iobs, id] * sin(theta_cop_prop[iobs, id])
+                        x_c_prop[iobs, id] <- r_mcmc[iobs, id] * cos(theta_cop_prop[iobs, id])
 
-            #            mh_ratio <- 0
+                        mh_ratio <- 0
 
-            #            mh_ratio <- mh_ratio + dnorm(x_c_prop[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
-            #            mh_ratio <- mh_ratio + dnorm(x_s_prop[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+                        mh_ratio <- mh_ratio + dnorm(x_c_prop[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
+                        mh_ratio <- mh_ratio + dnorm(x_s_prop[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
 
-            #            mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
-            #            mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+                        mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
+                        mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
 
-            #            mh_ratio <- mh_ratio + log(func_d_wc(theta_prop, mu_mcmc[id], rho_mcmc[id]))
+                        mh_ratio <- mh_ratio + log(func_d_wc(theta_prop, mu_mcmc[id], rho_mcmc[id]))
 
-            #            mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
+                        mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
 
-            #            if (is.na(mh_ratio)) {
-            #                print("mh_ratio is NA missing")
-            #                mh_ratio <- log(0)
-            #            }
+                        if (is.na(mh_ratio)) {
+                            print("mh_ratio is NA missing")
+                            mh_ratio <- log(0)
+                        }
 
-            #            if (runif(1, 0, 1) < exp(mh_ratio)) {
-            #                theta[iobs, id] <- theta_prop
-            #                x_s_mcmc[iobs, id] <- x_s_prop[iobs, id]
-            #                x_c_mcmc[iobs, id] <- x_c_prop[iobs, id]
-            #                theta_cop[iobs, id] <- theta_cop_prop[iobs, id]
-            #            } else {
-            #                x_s_prop[iobs, id] <- x_s_mcmc[iobs, id]
-            #                x_c_prop[iobs, id] <- x_c_mcmc[iobs, id]
-            #                theta_cop_prop[iobs, id] <- theta_cop[iobs, id]
-            #            }
-            #        }
-            #    }
-            # }
+                        if (runif(1, 0, 1) < exp(mh_ratio)) {
+                            theta[iobs, id] <- theta_prop
+                            x_s_mcmc[iobs, id] <- x_s_prop[iobs, id]
+                            x_c_mcmc[iobs, id] <- x_c_prop[iobs, id]
+                            theta_cop[iobs, id] <- theta_cop_prop[iobs, id]
+                        } else {
+                            x_s_prop[iobs, id] <- x_s_mcmc[iobs, id]
+                            x_c_prop[iobs, id] <- x_c_mcmc[iobs, id]
+                            theta_cop_prop[iobs, id] <- theta_cop[iobs, id]
+                        }
+                    }
+                }
+            }
             for (id in 1:d)
             {
                 # print(theta_zeta[id, k])
                 # print(theta[iobs, id])
                 # print(mu_mcmc[id, k])
                 # print(rho_mcmc[id, k])
-                theta_zeta[id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_mcmc[id])
+                theta_zeta[id] <- 2 * pi * func_cdf_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id])
                 x_s_zeta[id] <- r_mcmc[iobs, id] * sin(theta_zeta[id] - 0)
                 x_c_zeta[id] <- r_mcmc[iobs, id] * cos(theta_zeta[id] - 0)
             }
@@ -228,7 +250,7 @@ mcmc_cwc <- function(
 
                 for (iobs in 1:n)
                 {
-                    theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_prop, 0, rho_mcmc[id])
+                    theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id], mu_prop, rho_mcmc[id])
                 }
                 x_s_prop[, id] <- r_mcmc[, id] * sin(theta_cop_prop[, id])
                 x_c_prop[, id] <- r_mcmc[, id] * cos(theta_cop_prop[, id])
@@ -293,7 +315,7 @@ mcmc_cwc <- function(
 
                 for (iobs in 1:n)
                 {
-                    theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_prop)
+                    theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id], mu_mcmc[id], rho_prop)
                 }
                 x_s_prop[, id] <- r_mcmc[, id] * sin(theta_cop_prop[, id])
                 x_c_prop[, id] <- r_mcmc[, id] * cos(theta_cop_prop[, id])
@@ -347,6 +369,25 @@ mcmc_cwc <- function(
 
 
 
+            ##### rho
+            # for(id in 1:d)
+            # {
+            #    cond_var_c = 1/lambda_c_mcmc[id,id]
+            #    cond_var_s = 1/lambda_s_mcmc[id,id]
+
+            #    sum_app_x = 0
+            #    for(iobs in 1:n)
+            #    {
+            #        sum_app_x = sum_app_x +  x_c_mcmc[iobs,id]- (-cond_var_c*sum(lambda_c_mcmc[id,-id]*(x_c_mcmc[iobs,-id] - rho_mcmc[-id])))
+            #    }
+
+
+            #    par_2 = 1/(n/cond_var_c + 1/prior_rho_var[id])
+            #    par_1 = par_2*(sum_app_x/cond_var_c + prior_rho_mean[id]/prior_rho_var[id])
+
+            #    rho_mcmc[id] = rtruncnorm(1, a=0, b=Inf, mean = par_1, sd = par_2^0.5)
+
+            # }
 
 
             ##### r
@@ -386,13 +427,7 @@ mcmc_cwc <- function(
             }
 
             ### sigma
-            # print(cov(x_s_mcmc[, 1], x_s_mcmc[, 3]))
-            # print(c(x_s_mcmc[1, 1:6]))
-            # print(theta_cop[1, ])
-            # print(r_mcmc[1, 1:6])
 
-
-            # error("")
             nu <- par_sigma_adapt + d + 1
             prop_sigma <- rinvwishart(nu, sigma_s_mcmc * (nu - (d + 1)))
 

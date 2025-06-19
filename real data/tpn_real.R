@@ -10,10 +10,10 @@ library(MASS)
 library(truncnorm)
 library(matrixcalc)
 library(LaplacesDemon)
-name <- "PN"
+source("functions/general_functions.R")
+source("functions/mcmc_tpn.R")
 
-setwd("/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/lavori/Projected Normal on Torus/realdata/")
-load("/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/lavori/Projected Normal on Torus/realdata/dataset/wind/data wind.Rdata")
+load("real data/data/data wind.Rdata")
 
 # ========
 # *SECTION - Functions
@@ -101,7 +101,6 @@ for (id in 1:d)
 mmm <- 10
 set.seed(1)
 # source("/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/lavori/Projected Normal on Torus/realdata/mcmc_mixture_tpn.R")
-source("/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/lavori/Projected Normal on Torus/simulations/mcmc.R")
 out_mcmc <- mcmc_tpn(
   theta = theta_no_na, # the circualr data
   burnin = 1000 * mmm, # burnin
@@ -180,11 +179,11 @@ for (id in 1:d)
 
 
 
-save.image(paste("plot/tpn.Rdata", sep = ""))
+save.image(paste("real data/output/tpn.Rdata", sep = ""))
 
 
 
-pdf(paste("plot/tpn.pdf", sep = ""))
+pdf(paste("real data/output/tpn.pdf", sep = ""))
 
 
 plot(c(crps_val), main = paste(round(mean(c(crps_val)), 5), " - ", round(mean(c(waic)), 5)))

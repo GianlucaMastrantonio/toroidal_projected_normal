@@ -22,13 +22,20 @@ parout <- list()
 counter <- 1
 
 seed <- 2
-for (select_n in 1:3)
+# for (select_n in 1:3)
+# {
+#  for (select_d in 1:3)
+#  {
+#    for (select_rho in 1:3)
+#    {
+#      for (select_sigma in 1:2)
+for (select_n in 3)
 {
   for (select_d in 1:3)
   {
     for (select_rho in 1:3)
     {
-      for (select_sigma in 1:2)
+      for (select_sigma in 2)
       {
         # Store the result in the list
 
@@ -160,12 +167,12 @@ for (select_n in 1:3)
         # }
 
 
-        # theta_seq <- seq(0, 2 * pi, by = 0.0001)
-        # cumulative_wrappedcauchy <- list()
-        # for (id in 1:d)
-        # {
-        #  cumulative_wrappedcauchy[[id]] <- cdf_wc(theta_seq, mu[id], rho[id])
-        # }
+        theta_seq <- seq(0, 2 * pi, by = 0.00001)
+        cumulative_wrappedcauchy <- list()
+        for (id in 1:d)
+        {
+          cumulative_wrappedcauchy[[id]] <- cdf_wc(theta_seq, 0, rho[id])
+        }
 
 
 
@@ -175,7 +182,9 @@ for (select_n in 1:3)
           for (id in 1:d)
           {
             # w <- which(cumulative_wrappedcauchy[[id]] > (theta_cop[iobs, id] / (2 * pi)))[1]
-            theta[iobs, id] <- q_wc(theta_cop[iobs, id] / (2 * pi), mu[id], rho[id])
+            ## theta[iobs, id] <- q_wc(theta_cop[iobs, id] / (2 * pi), 0, rho[id]) + mu[id]
+            # theta[iobs, id] <- (theta_seq[w] + mu[id]) %% (2 * pi)
+            theta[iobs, id] <- (q_wc(theta_cop[iobs, id] / (2 * pi), 0, rho[id]) + mu[id]) %% (2 * pi)
           }
         }
 

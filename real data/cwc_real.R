@@ -13,7 +13,7 @@ library(matrixcalc)
 library(LaplacesDemon)
 source("functions/general_functions.R")
 source("functions/mcmc_cwn.R")
-name <- "cwc"
+
 
 load("real data/data/data wind.Rdata")
 
@@ -139,11 +139,11 @@ for (id in 1:d)
 
 
 
-save.image(paste("real data/output/wc.Rdata", sep = ""))
+save.image(paste("real data/output/cwc.Rdata", sep = ""))
 
 
 
-pdf(paste("real data/output/wc.pdf", sep = ""))
+pdf(paste("real data/output/cwc.pdf", sep = ""))
 
 
 
