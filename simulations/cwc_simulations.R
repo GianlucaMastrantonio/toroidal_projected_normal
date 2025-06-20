@@ -22,20 +22,13 @@ parout <- list()
 counter <- 1
 
 seed <- 2
-# for (select_n in 1:3)
-# {
-#  for (select_d in 1:3)
-#  {
-#    for (select_rho in 1:3)
-#    {
-#      for (select_sigma in 1:2)
-for (select_n in 3)
+for (select_n in 1:3)
 {
   for (select_d in 1:3)
   {
     for (select_rho in 1:3)
     {
-      for (select_sigma in 2)
+      for (select_sigma in 1:2)
       {
         # Store the result in the list
 

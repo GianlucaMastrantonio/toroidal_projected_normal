@@ -1,13 +1,10 @@
-# General utility functions for the toroidal_projected_normal project
-
-# Quantile function for the wrapped Cauchy distribution
 q_wc <- function(u, mu, lambda) {
   # Ensure u is in (0,1)
   if (any(u <= 0 | u >= 1)) {
     stop("u must be strictly between 0 and 1.")
   }
 
-  # Compute z_u using the inverse CDF formula
+  # Compute z_u
   cos_term <- cos(2 * pi * u)
   numerator <- 2 * lambda + (1 + lambda^2) * cos_term
   denominator <- 1 + lambda^2 + 2 * lambda * cos_term
@@ -16,7 +13,7 @@ q_wc <- function(u, mu, lambda) {
   # Clamp z_u to [-1, 1] to avoid numerical issues
   z_u <- pmin(1, pmax(-1, z_u))
 
-  # Compute quantile angle
+  # Compute quantile
   angle <- acos(z_u)
   a <- ifelse(u <= 0.5, mu + angle, mu - angle)
 
@@ -26,21 +23,16 @@ q_wc <- function(u, mu, lambda) {
   return(a)
 }
 
-# CDF of the wrapped Cauchy (unwrapped version, for a single value)
 cdf_wc_un <- function(theta_un, mu, rho) {
-  # Compute numerator and denominator for the CDF formula
   num <- (1 + rho^2) * cos(theta_un - mu) - 2 * rho
   den <- 1 + rho^2 - 2 * rho * cos(theta_un - mu)
-  # Use sign of sine to determine which branch of the CDF to use
   if (sin(theta_un - mu) >= 0) {
     return((1 / (2 * pi)) * acos(num / den))
   } else {
     return(1 - (1 / (2 * pi)) * acos(num / den))
   }
 }
-
-# Vectorized CDF for the wrapped Cauchy
-df_wc <- function(theta, mu, rho) {
+cdf_wc <- function(theta, mu, rho) {
   n <- length(theta)
   ret <- rep(NA, n)
   d0 <- cdf_wc_un(0, mu, rho)
@@ -52,7 +44,6 @@ df_wc <- function(theta, mu, rho) {
   return(ret)
 }
 
-# Alternative CDF and density functions for the wrapped Cauchy (used in copula context)
 func_cdf_wc_un <- function(theta_un, mu, rho) {
   num <- (1 + rho^2) * cos(theta_un - mu) - 2 * rho
   den <- 1 + rho^2 - 2 * rho * cos(theta_un - mu)
@@ -73,17 +64,14 @@ func_cdf_wc <- function(theta, mu, rho) {
   return((ret - d0) %% 1)
 }
 
-# Density of the wrapped Cauchy
-d_wc <- function(theta, mu, rho) {
+func_d_wc <- function(theta, mu, rho) {
   return(1 / (2 * pi) * ((1 - rho^2) / (1 + rho^2 - 2 * rho * cos(theta - mu))))
 }
 
-# Log-density of the wrapped Cauchy
-logd_wc <- function(theta, mu, rho) {
+func_logd_wc <- function(theta, mu, rho) {
   return(-log(2 * pi) + log(1 - rho^2) - log(1 + rho^2 - 2 * rho * cos(theta - mu)))
 }
 
-# Simulate a covariance matrix from the inverse Wishart and check if it is positive definite
 sim_sigma <- function(par1, par2) {
   tryCatch(
     {
@@ -96,8 +84,6 @@ sim_sigma <- function(par1, par2) {
     }
   )
 }
-
-# Test if a matrix is positive definite
 test_sigma <- function(Sigma_s) {
   tryCatch(
     {
@@ -109,8 +95,6 @@ test_sigma <- function(Sigma_s) {
     }
   )
 }
-
-# Compute the CRPS for circular data
 crps_circ <- function(real_data, missing_vec) {
   dd <- c(real_data, missing_vec)
 

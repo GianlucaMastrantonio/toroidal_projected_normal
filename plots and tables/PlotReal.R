@@ -13,10 +13,11 @@ dir_plot <- "plots and tables/out/"
 # ========
 
 # cwc
-load("real data/output/cwc.Rdata")
+load("real data/output/tpn.Rdata")
 mean(c(crps_val))
 mean(c(waic))
-load("real data/output/tpn.Rdata")
+
+load("real data/output/cwc.Rdata")
 mean(c(crps_val))
 mean(c(waic))
 
