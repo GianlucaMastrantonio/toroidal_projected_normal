@@ -100,7 +100,7 @@ for (id in 1:d)
 
 mmm <- 10
 set.seed(1)
-# source("/Users/gianlucamastrantonio/Dropbox (Politecnico di Torino Staff)/lavori/Projected Normal on Torus/realdata/mcmc_mixture_tpn.R")
+
 out_mcmc <- mcmc_tpn(
   theta = theta_no_na, # the circualr data
   burnin = 1000 * mmm, # burnin

@@ -19,7 +19,7 @@ This folder contains all the code and data used for the analyses and results for
    - Wrapped Cauchy:  
      ```r
      source("realdata/cwc_real.R")
-     ```
+     ``` 
    - Toroidal Projected normal:  
      ```r
      source("realdata/tpn_real.R")
@@ -44,7 +44,7 @@ This folder contains all the code and data used for the analyses and results for
 
 - Set your working directory to the `toroidal_projected_normal` folder before running scripts.
 - Results and outputs are saved in the corresponding `output/` directories.
-- For any problem and/or questions, email gianluca.mastrantonio@polito.it
+- For any problem and/or questions, email XXX
 
 ## License
 

@@ -80,48 +80,95 @@ for (i in 1:5)
 }
 
 molt_fig <- 2
-pdf(paste(dir_plot, "data_all.pdf", sep = ""), height = 4.5 * 2 * molt_fig, width = 3 * 2 * molt_fig)
-print(grid.arrange(p_list[[1]], p_list[[2]], p_list[[3]], p_list[[4]], p_list[[5]], p_list[[6]], p_list[[7]], p_list[[8]], p_list[[9]], p_list[[10]], p_list[[11]], p_list[[12]], p_list[[13]], p_list[[14]], p_list[[15]], ncol = 3, nrow = 5))
+pdf(paste(dir_plot, "data_all.pdf", sep = ""), width = 4.5 * 2 * molt_fig, height = 3 * 2 * molt_fig)
+print(grid.arrange(p_list[[1]], p_list[[2]], p_list[[3]], p_list[[4]], p_list[[5]], p_list[[6]], p_list[[7]], p_list[[8]], p_list[[9]], p_list[[10]], p_list[[11]], p_list[[12]], p_list[[13]], p_list[[14]], p_list[[15]], ncol = 5, nrow = 3))
 dev.off()
 # Plot using ggplot2
 
 
-##### Parameters
+###### Parameters
+# id <- 1
+# data_plot <- data.frame(var = c(mu_out[, id]), iter = 1:dim(mu_out)[1], type = 1)
+# for (id in 2:d)
+# {
+#  data_plot <- rbind(data_plot, data.frame(var = c(mu_out[, id]), iter = 1:dim(mu_out)[1], type = id))
+# }
+# p1 <- data_plot %>% ggplot(aes(x = var)) +
+#  geom_density(adjust = 2, key_glyph = draw_key_path, size = 1) +
+#  gg_theme +
+#  scale_linetype_manual(values = c("1" = "solid", "2" = "dashed", "3" = "dotted", "4" = "dotdash", "5" = "twodash")) +
+#  guides(linetype = guide_legend(keywidth = 4, keyheight = 2)) +
+#  theme(plot.title = element_text(size = 20), axis.title.x = element_blank(), axis.title.y = element_blank()) +
+#  scale_y_sqrt() +
+#  facet_wrap(~type, labeller = labeller(type = c("1" = names_plot[1], "2" = names_plot[2], "3" = names_plot[3], "4" = names_plot[4], "5" = names_plot[5], "6" = names_plot[6]))) +
+#  xlim(1.5, 3.)
+
 id <- 1
-data_plot <- data.frame(var = c(mu_out[, id]), iter = 1:dim(mu_out)[1], type = 1)
-for (id in 1:d)
-{
-  data_plot <- rbind(data_plot, data.frame(var = c(mu_out[, id]), iter = 1:dim(mu_out)[1], type = id))
-}
-p1 <- data_plot %>% ggplot(aes(x = var)) +
-  geom_density(adjust = 2, key_glyph = draw_key_path, size = 1) +
+lim <- 2.9
+mil <- 1.5
+density_1 <- density(mu_out[, 1], from = mil, to = lim, adjust = 2)
+density_2 <- density(mu_out[, 2], from = mil, to = lim, adjust = 2)
+density_3 <- density(mu_out[, 3], from = mil, to = lim, adjust = 2)
+density_4 <- density(mu_out[, 4], from = mil, to = lim, adjust = 2)
+density_5 <- density(mu_out[, 5], from = mil, to = lim, adjust = 2)
+density_6 <- density(mu_out[, 6], from = mil, to = lim, adjust = 2)
+
+data_plot <- data.frame(x = c(density_1$x, density_2$x, density_3$x, density_4$x, density_5$x, density_6$x), y = c(density_1$y, density_2$y, density_3$y, density_4$y, density_5$y, density_6$y), type = rep(1:6, each = length(density_1$x)))
+
+p1 <- data_plot %>% ggplot(aes(x = x, y = y)) +
+  geom_line(size = 2) +
   gg_theme +
   scale_linetype_manual(values = c("1" = "solid", "2" = "dashed", "3" = "dotted", "4" = "dotdash", "5" = "twodash")) +
   guides(linetype = guide_legend(keywidth = 4, keyheight = 2)) +
   theme(plot.title = element_text(size = 20), axis.title.x = element_blank(), axis.title.y = element_blank()) +
-  scale_y_sqrt() +
   facet_wrap(~type, labeller = labeller(type = c("1" = names_plot[1], "2" = names_plot[2], "3" = names_plot[3], "4" = names_plot[4], "5" = names_plot[5], "6" = names_plot[6])))
+p1
+
 
 pdf(paste(dir_plot, "post_par1.pdf", sep = ""), height = 7 * 0.9 * 1.8, width = 7 * 1 * 1.8)
 print(p1)
 dev.off()
 
 
+# id <- 1
+# data_plot <- data.frame(var = c(rho_out[, id]), iter = 1:dim(mu_out)[1], type = 1)
+# for (id in 2:d)
+# {
+#  data_plot <- rbind(data_plot, data.frame(var = c(rho_out[, id]), iter = 1:dim(mu_out)[1], type = id))
+# }
+# p1 <- data_plot %>% ggplot(aes(x = var)) +
+#  geom_density(adjust = 2, key_glyph = draw_key_path, size = 1) +
+#  gg_theme +
+#  scale_linetype_manual(values = c("1" = "solid", "2" = "dashed", "3" = "dotted", "4" = "dotdash", "5" = "twodash")) +
+#  guides(linetype = guide_legend(keywidth = 4, keyheight = 2)) +
+#  theme(plot.title = element_text(size = 20), axis.title.x = element_blank(), axis.title.y = element_blank()) +
+#  scale_y_sqrt() +
+#  facet_wrap(~type, labeller = labeller(type = c("1" = names_plot[1], "2" = names_plot[2], "3" = names_plot[3], "4" = names_plot[4], "5" = names_plot[5], "6" = names_plot[6])))
+# p1
+# pdf(paste(dir_plot, "post_par2.pdf", sep = ""), height = 7 * 0.9 * 1.8, width = 7 * 1 * 1.8)
+# print(p1)
+# dev.off()
+
+
 id <- 1
-data_plot <- data.frame(var = c(rho_out[, id]), iter = 1:dim(mu_out)[1], type = 1)
-for (id in 1:d)
-{
-  data_plot <- rbind(data_plot, data.frame(var = c(rho_out[, id]), iter = 1:dim(mu_out)[1], type = id))
-}
-p1 <- data_plot %>% ggplot(aes(x = var)) +
-  geom_density(adjust = 2, key_glyph = draw_key_path, size = 1) +
+lim <- 0.7
+density_1 <- density(rho_out[, 1], from = 0, to = lim, adjust = 2)
+density_2 <- density(rho_out[, 2], from = 0, to = lim, adjust = 2)
+density_3 <- density(rho_out[, 3], from = 0, to = lim, adjust = 2)
+density_4 <- density(rho_out[, 4], from = 0, to = lim, adjust = 2)
+density_5 <- density(rho_out[, 5], from = 0, to = lim, adjust = 2)
+density_6 <- density(rho_out[, 6], from = 0, to = lim, adjust = 2)
+
+data_plot <- data.frame(x = c(density_1$x, density_2$x, density_3$x, density_4$x, density_5$x, density_6$x), y = c(density_1$y, density_2$y, density_3$y, density_4$y, density_5$y, density_6$y), type = rep(1:6, each = length(density_1$x)))
+
+p1 <- data_plot %>% ggplot(aes(x = x, y = y)) +
+  geom_line(size = 2) +
   gg_theme +
   scale_linetype_manual(values = c("1" = "solid", "2" = "dashed", "3" = "dotted", "4" = "dotdash", "5" = "twodash")) +
   guides(linetype = guide_legend(keywidth = 4, keyheight = 2)) +
   theme(plot.title = element_text(size = 20), axis.title.x = element_blank(), axis.title.y = element_blank()) +
-  scale_y_sqrt() +
   facet_wrap(~type, labeller = labeller(type = c("1" = names_plot[1], "2" = names_plot[2], "3" = names_plot[3], "4" = names_plot[4], "5" = names_plot[5], "6" = names_plot[6])))
-
+p1
 pdf(paste(dir_plot, "post_par2.pdf", sep = ""), height = 7 * 0.9 * 1.8, width = 7 * 1 * 1.8)
 print(p1)
 dev.off()

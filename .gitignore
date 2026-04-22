@@ -1,3 +1,5 @@
 /simulations/output/*
 real data/output/*
 .Rapp.history
+real data/data/new_get_Data.R
+real data/data/appfile/

@@ -202,16 +202,7 @@ mcmc_cwc <- function(
                     }
                 }
             }
-            for (id in 1:d)
-            {
-                # print(theta_zeta[id, k])
-                # print(theta[iobs, id])
-                # print(mu_mcmc[id, k])
-                # print(rho_mcmc[id, k])
-                theta_zeta[id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_mcmc[id])
-                x_s_zeta[id] <- r_mcmc[iobs, id] * sin(theta_zeta[id] - 0)
-                x_c_zeta[id] <- r_mcmc[iobs, id] * cos(theta_zeta[id] - 0)
-            }
+
             #### mu
             x_s_prop <- x_s_mcmc
             x_c_prop <- x_c_mcmc
@@ -496,6 +487,12 @@ mcmc_cwc <- function(
         }
         for (iobs in 1:n)
         {
+            for (id in 1:d)
+            {
+                theta_zeta[id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_mcmc[id])
+                x_s_zeta[id] <- r_mcmc[iobs, id] * sin(theta_zeta[id] - 0)
+                x_c_zeta[id] <- r_mcmc[iobs, id] * cos(theta_zeta[id] - 0)
+            }
             app <- dmvnorm(x_c_zeta[tf_missig_out[iobs, ]], vec_zero[tf_missig_out[iobs, ]], sigma_c_mcmc[tf_missig_out[iobs, ], tf_missig_out[iobs, ]], log = T)
 
             app <- app + dmvnorm(x_s_zeta[tf_missig_out[iobs, ]], vec_zero[tf_missig_out[iobs, ]], sigma_s_mcmc[tf_missig_out[iobs, ], tf_missig_out[iobs, ]], log = T)
