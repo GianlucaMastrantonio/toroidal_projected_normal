@@ -409,13 +409,15 @@ mcmc_cwc <- function(
 
             ## if ((test_sigma(prop_sigma) == TRUE) & (test_sigma2(prop_sigma) == TRUE)) {
             # save_acc_sigma[sum_iter] <- 0
-            Emat <- matrix(rnorm(d^2, 0, par_sigma_adapt), nrow = d, ncol = d)
-            Emat <- (Emat + t(Emat)) / sqrt(2)
-            diag(Emat) <- rnorm(d, 0, par_sigma_adapt)
+            # Emat <- matrix(rnorm(d^2, 0, par_sigma_adapt), nrow = d, ncol = d)
+            # Emat <- (Emat + t(Emat)) / sqrt(2)
+            # diag(Emat) <- rnorm(d, 0, par_sigma_adapt)
 
-            prop_sigma <- sigma_s_mcmc + Emat
+            # prop_sigma <- sigma_s_mcmc + Emat
+
+            prop_sigma <- rWishart(1, par_sigma_adapt, sigma_s_mcmc / par_sigma_adapt)[, , 1]
+
             prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
-
             save_acc_sigma[sum_iter] <- 0
             print("Test Sigma")
             res_test <- test_sigma_mcmc(prop_sigma)
@@ -455,8 +457,8 @@ mcmc_cwc <- function(
                 mh_ratio <- mh_ratio - dInvWishart(sigma_s_mcmc, prior_sigma_nu, prior_sigma_psi, log = T)
 
                 ### proposal
-                # mh_ratio <- mh_ratio - dInvWishart(sigma_s_prop, nu, sigma_s_mcmc * (nu - (d + 1)), log = T)
-                # mh_ratio <- mh_ratio + dInvWishart(sigma_s_mcmc, nu, sigma_s_prop * (nu - (d + 1)), log = T)
+                mh_ratio <- mh_ratio - (dWishart(prop_sigma, par_sigma_adapt, sigma_s_mcmc / par_sigma_adapt, log = T))
+                mh_ratio <- mh_ratio + (dWishart(sigma_s_mcmc, par_sigma_adapt, prop_sigma / par_sigma_adapt, log = T))
 
 
                 if (is.na(mh_ratio)) {
@@ -486,7 +488,7 @@ mcmc_cwc <- function(
                 alpha_sigma <- alpha_sigma / adapt_batch
                 # print(cbind(alpha_rho,sd_rho))
                 # print(par_sigma_adapt)
-                if ((sum_iter < burnin)) {
+                if ((sum_iter < (burnin * 100.0))) {
                     for (id in 1:d)
                     {
                         sd_mu[id] <- exp(log(sd_mu[id]) + adapt_a / (adapt_b + sum_iter) * (alpha_mu[id] - adapt_alpha_target))
@@ -502,7 +504,7 @@ mcmc_cwc <- function(
                     }
 
                     # sigma
-                    par_sigma_adapt <- exp(log(par_sigma_adapt) + adapt_a / (adapt_b + sum_iter) * (alpha_sigma - adapt_alpha_target))
+                    par_sigma_adapt <- exp(log(par_sigma_adapt) - adapt_a / (adapt_b + sum_iter) * (alpha_sigma - adapt_alpha_target))
                     alpha_sigma <- 0
                 }
             }

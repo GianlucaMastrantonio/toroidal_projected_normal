@@ -415,7 +415,7 @@ mcmc_tpn <- function(
             # prop_prec_sigma_prop <- 1
             # prop_prec_sigma_mcmc <- 1
             ## par_psi_post <- par_psi_post_s
-            # sigma_iw_prop <- rInvWishart(1, par_nu_post, par_psi_post)[, , 1]
+
             # prop_sigma <- prop_prec_sigma_prop * sigma_iw_prop + (1 - prop_prec_sigma_prop) * sigma_s_mcmc
             # prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
 
@@ -425,13 +425,15 @@ mcmc_tpn <- function(
             ## }
 
             ## prop_sigma <- prop_prec_sigma_prop * par_psi_post_s / (d) + (1 - prop_prec_sigma_prop) * sigma_s_mcmc
-            Emat <- matrix(rnorm(d^2, 0, par_sigma_adapt), nrow = d, ncol = d)
-            Emat <- (Emat + t(Emat)) / sqrt(2)
-            diag(Emat) <- rnorm(d, 0, par_sigma_adapt)
+            # Emat <- matrix(rnorm(d^2, 0, par_sigma_adapt), nrow = d, ncol = d)
+            # Emat <- (Emat + t(Emat)) / sqrt(2)
+            # diag(Emat) <- rnorm(d, 0, par_sigma_adapt)
 
-            prop_sigma <- sigma_s_mcmc + Emat
+            # prop_sigma <- sigma_s_mcmc + Emat
+
+            prop_sigma <- rWishart(1, par_sigma_adapt, sigma_s_mcmc / par_sigma_adapt)[, , 1]
+
             prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
-
             save_acc_sigma[sum_iter] <- 0
             print("Test Sigma")
             print(par_sigma_adapt)
@@ -476,10 +478,8 @@ mcmc_tpn <- function(
                 # print(mh_ratio)
                 ### proposal
                 # print("Proposal")
-                # sigma_iw_mcmc <- (sigma_s_mcmc - (1 - prop_prec_sigma_mcmc) * sigma_iw_prop) / prop_prec_sigma_mcmc
-
-                # mh_ratio <- mh_ratio - (dInvWishart(sigma_iw_prop, par_nu_post, par_psi_post, log = T))
-                # mh_ratio <- mh_ratio + (safe_dInvWishart(sigma_iw_mcmc, par_nu_post, par_psi_post, log = T))
+                mh_ratio <- mh_ratio - (dWishart(prop_sigma, par_sigma_adapt, sigma_s_mcmc / par_sigma_adapt, log = T))
+                mh_ratio <- mh_ratio + (dWishart(sigma_s_mcmc, par_sigma_adapt, prop_sigma / par_sigma_adapt, log = T))
                 # print(mh_ratio)
 
                 if (is.na(exp(mh_ratio))) {
@@ -512,7 +512,7 @@ mcmc_tpn <- function(
                 alpha_sigma <- alpha_sigma / adapt_batch
                 # print(alpha_sigma)
                 # print(par_sigma_adapt)
-                if ((sum_iter < burnin)) {
+                if ((sum_iter < (burnin * 100.0))) {
                     for (id in 1:d)
                     {
                         sd_mu[id] <- exp(log(sd_mu[id]) + adapt_a / (adapt_b + sum_iter) * (alpha_mu[id] - adapt_alpha_target))
@@ -525,7 +525,7 @@ mcmc_tpn <- function(
                     }
 
                     # sigma
-                    par_sigma_adapt <- exp(log(par_sigma_adapt) + adapt_a / (adapt_b + sum_iter) * (alpha_sigma - adapt_alpha_target))
+                    par_sigma_adapt <- exp(log(par_sigma_adapt) - adapt_a / (adapt_b + sum_iter) * (alpha_sigma - adapt_alpha_target))
                     alpha_sigma <- 0
                 }
             }

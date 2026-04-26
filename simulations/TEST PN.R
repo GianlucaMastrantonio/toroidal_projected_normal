@@ -193,12 +193,12 @@ out_mcmc <- mcmc_tpn(
   r_init = matrix(1, nrow = n, ncol = d),
 
   # parameters for the adaptive part of Metropolis
-  adapt_batch = 50,
-  adapt_a = 1000,
-  adapt_b = 1200,
-  adapt_alpha_target = 0.234,
+  adapt_batch = 10,
+  adapt_a = 10000,
+  adapt_b = 12000,
+  adapt_alpha_target = 0.5,
   sd_mu_scal = 1,
-  par_sigma_adapt = 1
+  par_sigma_adapt = 5000
 )
 
 # # # # # # # # # # # # # #
