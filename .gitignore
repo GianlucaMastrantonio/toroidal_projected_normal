@@ -3,3 +3,4 @@ real data/output/*
 .Rapp.history
 real data/data/new_get_Data.R
 real data/data/appfile/
+real data/data/data_stations_code.RData

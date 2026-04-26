@@ -1,3 +1,4 @@
+library(CholWishart)
 library(ggplot2)
 library(dplyr)
 library(readr)
@@ -13,7 +14,9 @@ library(LaplacesDemon)
 source("functions/general_functions.R")
 source("functions/mcmc_tpn.R")
 
-load("real data/data/data wind.Rdata")
+load("real data/data/data_stations_code.Rdata")
+
+seed <- 2
 
 # ========
 # *SECTION - Functions
@@ -53,8 +56,8 @@ crps_circ <- function(real_data, missing_vec) {
 # ========
 # * SECTION - data
 # ========
-theta <- as.matrix(data_subset_model[, -1] / 350 * 2 * pi)
-theta <- theta[, c(1, 2, 3, 5, 4, 6)]
+theta <- as.matrix(data_stations_code[, -c(1, 2)] / 360 * 2 * pi)
+
 
 
 app <- theta
@@ -99,7 +102,7 @@ for (id in 1:d)
 
 
 mmm <- 10
-set.seed(1)
+set.seed(seed)
 
 out_mcmc <- mcmc_tpn(
   theta = theta_no_na, # the circualr data
@@ -178,12 +181,10 @@ for (id in 1:d)
 }
 
 
-
-save.image(paste("real data/output/tpn.Rdata", sep = ""))
-
+save.image(paste("real data/output/tpn_seed", seed, ".Rdata", sep = ""))
 
 
-pdf(paste("real data/output/tpn.pdf", sep = ""))
+pdf(paste("real data/output/tpn_seed", seed, ".pdf", sep = ""))
 
 
 plot(c(crps_val), main = paste(round(mean(c(crps_val)), 5), " - ", round(mean(c(waic)), 5)))
@@ -214,8 +215,6 @@ print(p1)
 #    ggtitle(paste("kappa", id))
 #  print(p1)
 # }
-
-
 
 
 par(mfrow = c(3, 3))

@@ -1,4 +1,5 @@
 rm(list = ls())
+library(CholWishart)
 library(ggplot2)
 library(dplyr)
 library(readr)
@@ -15,15 +16,14 @@ source("functions/general_functions.R")
 source("functions/mcmc_cwn.R")
 
 
-load("real data/data/data wind.Rdata")
+load("real data/data/data_stations_code.Rdata")
 
 
-
+seed <- 2
 # ========
 # * SECTION - data
 # ========
-theta <- as.matrix(data_subset_model[, -1] / 350 * 2 * pi)
-theta <- theta[, c(1, 2, 3, 5, 4, 6)]
+theta <- as.matrix(data_stations_code[, -c(1, 2)] / 360 * 2 * pi)
 
 n <- nrow(theta)
 d <- ncol(theta)
@@ -64,7 +64,7 @@ for (id in 1:d)
 #  sigma_init[, , k] <- diag(runif(d, 0.5, 1.5))
 # }
 
-set.seed(2)
+set.seed(seed)
 mmm <- 10
 out_mcmc <- mcmc_cwc(
   theta = theta_no_na, # the circualr data
@@ -139,11 +139,10 @@ for (id in 1:d)
 
 
 
-save.image(paste("real data/output/cwc.Rdata", sep = ""))
+save.image(paste("real data/output/cwc_seed", seed, ".Rdata", sep = ""))
 
 
-
-pdf(paste("real data/output/cwc.pdf", sep = ""))
+pdf(paste("real data/output/cwc_seed", seed, ".pdf", sep = ""))
 
 
 

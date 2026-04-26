@@ -1,3 +1,26 @@
+safe_dInvWishart <- function(S, nu, Psi, log = TRUE) {
+  out <- tryCatch(
+    dInvWishart(S, nu, Psi, log = log),
+    error = function(e) if (log) -Inf else 0
+  )
+  if (length(out) != 1 || is.na(out) || !is.finite(out)) {
+    return(if (log) -Inf else 0)
+  }
+  out
+}
+logsumexp2 <- function(a, b) {
+  if (is.infinite(a) && a == -Inf) {
+    return(b)
+  }
+
+  if (is.infinite(b) && b == -Inf) {
+    return(a)
+  }
+
+  m <- max(a, b)
+
+  m + log(exp(a - m) + exp(b - m))
+}
 q_wc <- function(u, mu, lambda) {
   # Ensure u is in (0,1)
   if (any(u <= 0 | u >= 1)) {
@@ -75,7 +98,7 @@ func_logd_wc <- function(theta, mu, rho) {
 sim_sigma <- function(par1, par2) {
   tryCatch(
     {
-      Sigma_s <- riwish(par1, par2)
+      Sigma_s <- rInvWishart(1, par1, par2)[, , 1]
       chol(abs(Sigma_s))
       return(list(Sigma_s, TRUE))
     },
@@ -92,6 +115,19 @@ test_sigma <- function(Sigma_s) {
     },
     error = function(e) {
       return(FALSE)
+    }
+  )
+}
+test_sigma_mcmc <- function(Sigma_s) {
+  tryCatch(
+    {
+      c1 <- chol(abs(Sigma_s))
+      c2 <- chol(Sigma_s)
+
+      return(list(chol_sigma_s = c2, chol_sigma_c = c1, ind = TRUE))
+    },
+    error = function(e) {
+      return(list(ind = FALSE))
     }
   )
 }

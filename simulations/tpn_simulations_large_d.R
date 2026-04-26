@@ -1,5 +1,6 @@
 rm(list = ls())
-
+# install.packages("CholWishart")
+library(CholWishart)
 library(MCMCpack)
 library(MASS)
 library(truncnorm)
@@ -18,33 +19,37 @@ source("functions/mcmc_tpn.R")
 # ========
 # funciton to simulate a sigma which is valid after taking the absolute values
 # ========
-seed <- 2
+
 out <- list()
 parout <- list()
 counter <- 1
 
+seed_list <- c(2, 20)
+select_d <- c(2, 4)
 
-for (select_n in 1:3)
+
+for (select_n in ifelse(select_d < 3, 1, 4):ifelse(select_d < 3, 3, 4))
 {
-  for (select_d in 1:3)
+  for (select_kappa in 1:4)
   {
-    for (select_kappa in 1:4)
+    for (select_sigma in 1:2)
     {
-      for (select_sigma in 1:2)
+      for (select_chain in 1:2)
       {
+        seed <- seed_list[select_chain]
         # Store the result in the list
 
-        n <- c(20, 50, 100)[select_n] # number of observation
-        d <- c(3, 6, 12)[select_d] # dimension of the torus
+        n <- c(20, 50, 100, 300)[select_n] # number of observation
+        d <- c(3, 6, 12, 100)[select_d] # dimension of the torus
         dmax <- max(d)
         ### parameters
-        mu <- c(0, pi / 6, 2 * pi / 6, 3 * pi / 6, 4 * pi / 6, 5 * pi / 6, 0, pi / 6, 2 * pi / 6, 3 * pi / 6, 4 * pi / 6, 5 * pi / 6)[1:d]
+        mu <- rep(c(0, pi / 6, 2 * pi / 6, 3 * pi / 6, 4 * pi / 6, 5 * pi / 6, 0, pi / 6, 2 * pi / 6, 3 * pi / 6, 4 * pi / 6, 5 * pi / 6), times = 20)[1:d]
 
         kappa_mat <- matrix(NA, ncol = dmax, nrow = 4)
         kappa_mat[1, ] <- rep(0.49, dmax)
         kappa_mat[2, ] <- rep(1.1, dmax)
         kappa_mat[3, ] <- rep(2.45, dmax)
-        kappa_mat[4, ] <- rep(c(0.49, 1.1, 2.45), dmax / 3)
+        kappa_mat[4, ] <- (rep(c(0.49, 1.1, 2.45), (dmax + 3) / 3))[1:dmax]
         kappa <- kappa_mat[select_kappa, 1:d]
 
         sigma_array <- array(0, c(dmax, dmax, 2))
@@ -112,6 +117,7 @@ for (select_n in 1:3)
           " select_n=", select_n,
           " select_kappa=", select_kappa,
           " select_sigma=", select_sigma,
+          " select_chain=", select_chain,
           ".pdf",
           sep = ""
         ))
@@ -160,15 +166,18 @@ for (select_n in 1:3)
         save(parout, file = paste(
           "simulations/output/tpn_simulations_parameters -",
           " select_seed=", seed,
-          # " select_d=", select_d,
+          " select_d=", select_d,
           # " select_n=", select_n,
           # " select_kappa=", select_kappa,
           # " select_sigma=", select_sigma,
+          " select_chain=", select_chain,
           ".Rdata"
         ))
 
 
         mmm <- 10
+        #
+        source("functions/mcmc_tpn.R")
         out_mcmc <- mcmc_tpn(
           theta = theta, # the circualr data
           burnin = 1000 * mmm, # burnin
@@ -193,7 +202,7 @@ for (select_n in 1:3)
           adapt_b = 1200,
           adapt_alpha_target = 0.234,
           sd_mu_scal = 1,
-          par_sigma_adapt = 2000
+          par_sigma_adapt = 1
         )
 
         # # # # # # # # # # # # # #
@@ -244,7 +253,8 @@ for (select_n in 1:3)
           "mcmc_sigma_s_out" = out_mcmc$sigma_s_out,
           "mcmc_sigma_c_out" = out_mcmc$sigma_c_out,
           "mcmc_r_out" = out_mcmc$r_out,
-          "mcmc_kappa_out" = out_mcmc$kappa_out
+          "mcmc_kappa_out" = out_mcmc$kappa_out,
+          "pos_def_sigma" = out_mcmc$save_acc_sigma
         )
 
 
@@ -254,10 +264,11 @@ for (select_n in 1:3)
         save(out, file = paste(
           "simulations/output/tpn_simulations_results -",
           " select_seed=", seed,
-          # " select_d=", select_d,
+          " select_d=", select_d,
           # " select_n=", select_n,
           # " select_kappa=", select_kappa,
           # " select_sigma=", select_sigma,
+          " select_chain=", select_chain,
           ".Rdata"
         ))
 
@@ -269,6 +280,7 @@ for (select_n in 1:3)
           " select_n=", select_n,
           " select_kappa=", select_kappa,
           " select_sigma=", select_sigma,
+          " select_chain=", select_chain,
           ".pdf",
           sep = ""
         ))
@@ -312,3 +324,8 @@ for (select_n in 1:3)
     }
   }
 }
+
+
+ll <- 1
+
+plot(ttt, exp(log(ll) + 1000 / (1200 + ttt) * (0 - 0.234)))
