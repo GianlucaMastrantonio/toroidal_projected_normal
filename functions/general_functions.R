@@ -76,15 +76,32 @@ func_cdf_wc_un <- function(theta_un, mu, rho) {
     return(1 - (1 / (2 * pi)) * acos(num / den))
   }
 }
+# func_cdf_wc <- function(theta, mu, rho) {
+#  n <- length(theta)
+#  ret <- rep(NA, n)
+#  d0 <- func_cdf_wc_un(0, mu, rho)
+#  for (i in 1:n)
+#  {
+#    ret[i] <- func_cdf_wc_un(theta[i], mu, rho)
+#  }
+#  return((ret - d0) %% 1)
+# }
 func_cdf_wc <- function(theta, mu, rho) {
-  n <- length(theta)
-  ret <- rep(NA, n)
-  d0 <- func_cdf_wc_un(0, mu, rho)
-  for (i in 1:n)
-  {
-    ret[i] <- func_cdf_wc_un(theta[i], mu, rho)
-  }
-  return((ret - d0) %% 1)
+  ang <- theta - mu
+  z <- ((1 + rho^2) * cos(ang) - 2 * rho) / (1 + rho^2 - 2 * rho * cos(ang))
+  z <- pmin(1, pmax(-1, z))
+
+  val <- acos(z) / (2 * pi)
+  ret <- ifelse(sin(ang) >= 0, val, 1 - val)
+
+  ang0 <- -mu
+  z0 <- ((1 + rho^2) * cos(ang0) - 2 * rho) / (1 + rho^2 - 2 * rho * cos(ang0))
+  z0 <- pmin(1, pmax(-1, z0))
+
+  val0 <- acos(z0) / (2 * pi)
+  d0 <- ifelse(sin(ang0) >= 0, val0, 1 - val0)
+
+  (ret - d0) %% 1
 }
 
 func_d_wc <- function(theta, mu, rho) {

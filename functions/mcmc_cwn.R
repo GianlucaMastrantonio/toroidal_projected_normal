@@ -195,16 +195,18 @@ mcmc_cwc <- function(
                         mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
                         mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
 
-                        mh_ratio <- mh_ratio + log(func_d_wc(theta_prop, mu_mcmc[id], rho_mcmc[id]))
+                        # mh_ratio <- mh_ratio + log(func_d_wc(theta_prop, mu_mcmc[id], rho_mcmc[id]))
+                        # mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
 
-                        mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
+                        mh_ratio <- mh_ratio + func_logd_wc(theta_prop, mu_mcmc[id], rho_mcmc[id])
+                        mh_ratio <- mh_ratio - func_logd_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id])
 
                         if (is.na(mh_ratio)) {
                             print("mh_ratio is NA missing")
                             mh_ratio <- log(0)
                         }
 
-                        if (runif(1, 0, 1) < exp(mh_ratio)) {
+                        if (log(runif(1, 0, 1)) < (mh_ratio)) {
                             theta[iobs, id] <- theta_prop
                             x_s_mcmc[iobs, id] <- x_s_prop[iobs, id]
                             x_c_mcmc[iobs, id] <- x_c_prop[iobs, id]
@@ -219,58 +221,119 @@ mcmc_cwc <- function(
             }
 
             #### mu
+            # NOTE: OLD
+            # x_s_prop <- x_s_mcmc
+            # x_c_prop <- x_c_mcmc
+            # theta_cop_prop <- theta_cop
+            # for (id in 1:d)
+            # {
+            #    cond_var_c <- 1 / lambda_c_mcmc[id, id]
+            #    cond_var_s <- 1 / lambda_s_mcmc[id, id]
+
+            #    mu_prop <- rnorm(1, mu_mcmc[id], sd_mu[id])
+
+
+            #    for (iobs in 1:n)
+            #    {
+            #        theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_prop, 0, rho_mcmc[id])
+            #    }
+            #    x_s_prop[, id] <- r_mcmc[, id] * sin(theta_cop_prop[, id])
+            #    x_c_prop[, id] <- r_mcmc[, id] * cos(theta_cop_prop[, id])
+
+            #    mh_ratio <- 0
+            #    for (iobs in 1:n)
+            #    {
+            #        cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
+            #        cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
+
+            #        mh_ratio <- mh_ratio + dnorm(x_c_prop[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
+            #        mh_ratio <- mh_ratio + dnorm(x_s_prop[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+
+            #        mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
+            #        mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+
+            #        mh_ratio <- mh_ratio + log(func_d_wc(theta[iobs, id], mu_prop, rho_mcmc[id]))
+
+            #        mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
+            #    }
+
+            #    mh_ratio <- mh_ratio + dnorm(mu_prop, prior_mu_mean[id], prior_mu_var[id]^0.5, log = T)
+            #    mh_ratio <- mh_ratio - dnorm(mu_mcmc[id], prior_mu_mean[id], prior_mu_var[id]^0.5, log = T)
+
+            #    alpha_mh <- min(1, exp(mh_ratio))
+
+
+            #    # if(id == 1)
+            #    # {
+            #    #    print(alpha_mh)
+            #    #    print(sd_mu[id])
+            #    # }
+            #    if (is.na(alpha_mh)) {
+            #        print("mh_ratio is NA mu")
+            #        alpha_mh <- 0
+            #    }
+            #    alpha_mu[id] <- alpha_mu[id] + alpha_mh
+            #    if (runif(1, 0, 1) < alpha_mh) {
+            #        mu_mcmc[id] <- mu_prop
+            #        x_s_mcmc[, id] <- x_s_prop[, id]
+            #        x_c_mcmc[, id] <- x_c_prop[, id]
+            #        theta_cop[, id] <- theta_cop_prop[, id]
+            #    } else {
+            #        x_s_prop[, id] <- x_s_mcmc[, id]
+            #        x_c_prop[, id] <- x_c_mcmc[, id]
+            #        theta_cop_prop[, id] <- theta_cop[, id]
+            #    }
+            # }
+            # NOTE new
             x_s_prop <- x_s_mcmc
             x_c_prop <- x_c_mcmc
             theta_cop_prop <- theta_cop
+
             for (id in 1:d)
             {
                 cond_var_c <- 1 / lambda_c_mcmc[id, id]
                 cond_var_s <- 1 / lambda_s_mcmc[id, id]
+                sd_c <- sqrt(cond_var_c)
+                sd_s <- sqrt(cond_var_s)
 
                 mu_prop <- rnorm(1, mu_mcmc[id], sd_mu[id])
 
+                theta_cop_prop[, id] <- 2 * pi * func_cdf_wc(theta[, id] - mu_prop, 0, rho_mcmc[id])
 
-                for (iobs in 1:n)
-                {
-                    theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_prop, 0, rho_mcmc[id])
-                }
                 x_s_prop[, id] <- r_mcmc[, id] * sin(theta_cop_prop[, id])
                 x_c_prop[, id] <- r_mcmc[, id] * cos(theta_cop_prop[, id])
 
-                mh_ratio <- 0
-                for (iobs in 1:n)
-                {
-                    cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
-                    cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
+                cond_mean_c_vec <- -cond_var_c * as.vector(
+                    x_c_mcmc[, -id, drop = FALSE] %*% lambda_c_mcmc[id, -id]
+                )
 
-                    mh_ratio <- mh_ratio + dnorm(x_c_prop[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
-                    mh_ratio <- mh_ratio + dnorm(x_s_prop[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+                cond_mean_s_vec <- -cond_var_s * as.vector(
+                    x_s_mcmc[, -id, drop = FALSE] %*% lambda_s_mcmc[id, -id]
+                )
 
-                    mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
-                    mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+                mh_ratio <- sum(dnorm(x_c_prop[, id], cond_mean_c_vec, sd_c, log = TRUE)) +
+                    sum(dnorm(x_s_prop[, id], cond_mean_s_vec, sd_s, log = TRUE)) -
+                    sum(dnorm(x_c_mcmc[, id], cond_mean_c_vec, sd_c, log = TRUE)) -
+                    sum(dnorm(x_s_mcmc[, id], cond_mean_s_vec, sd_s, log = TRUE))
 
-                    mh_ratio <- mh_ratio + log(func_d_wc(theta[iobs, id], mu_prop, rho_mcmc[id]))
+                mh_ratio <- mh_ratio +
+                    sum(func_logd_wc(theta[, id], mu_prop, rho_mcmc[id])) -
+                    sum(func_logd_wc(theta[, id], mu_mcmc[id], rho_mcmc[id]))
 
-                    mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
-                }
-
-                mh_ratio <- mh_ratio + dnorm(mu_prop, prior_mu_mean[id], prior_mu_var[id]^0.5, log = T)
-                mh_ratio <- mh_ratio - dnorm(mu_mcmc[id], prior_mu_mean[id], prior_mu_var[id]^0.5, log = T)
+                mh_ratio <- mh_ratio +
+                    dnorm(mu_prop, prior_mu_mean[id], sqrt(prior_mu_var[id]), log = TRUE) -
+                    dnorm(mu_mcmc[id], prior_mu_mean[id], sqrt(prior_mu_var[id]), log = TRUE)
 
                 alpha_mh <- min(1, exp(mh_ratio))
 
-
-                # if(id == 1)
-                # {
-                #    print(alpha_mh)
-                #    print(sd_mu[id])
-                # }
                 if (is.na(alpha_mh)) {
                     print("mh_ratio is NA mu")
                     alpha_mh <- 0
                 }
+
                 alpha_mu[id] <- alpha_mu[id] + alpha_mh
-                if (runif(1, 0, 1) < alpha_mh) {
+
+                if (log(runif(1)) < mh_ratio) {
                     mu_mcmc[id] <- mu_prop
                     x_s_mcmc[, id] <- x_s_prop[, id]
                     x_c_mcmc[, id] <- x_c_prop[, id]
@@ -282,59 +345,124 @@ mcmc_cwc <- function(
                 }
             }
             #### rho
+            # NOTE old
+            # x_s_prop <- x_s_mcmc
+            # x_c_prop <- x_c_mcmc
+            # theta_cop_prop <- theta_cop
+            # for (id in 1:d)
+            # {
+            #    cond_var_c <- 1 / lambda_c_mcmc[id, id]
+            #    cond_var_s <- 1 / lambda_s_mcmc[id, id]
+
+            #    rho_mcmc_app <- log(rho_mcmc[id] / (1 - rho_mcmc[id]))
+            #    rho_prop_app <- rnorm(1, rho_mcmc_app, sd_rho[id])
+            #    # rho_prop_app = rho_mcmc_app
+            #    rho_prop <- exp(rho_prop_app) / (1 + exp(rho_prop_app))
+
+
+            #    for (iobs in 1:n)
+            #    {
+            #        theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_prop)
+            #    }
+            #    x_s_prop[, id] <- r_mcmc[, id] * sin(theta_cop_prop[, id])
+            #    x_c_prop[, id] <- r_mcmc[, id] * cos(theta_cop_prop[, id])
+
+            #    mh_ratio <- 0
+            #    for (iobs in 1:n)
+            #    {
+            #        cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
+            #        cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
+
+            #        mh_ratio <- mh_ratio + dnorm(x_c_prop[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
+            #        mh_ratio <- mh_ratio + dnorm(x_s_prop[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+
+            #        mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
+            #        mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+
+            #        mh_ratio <- mh_ratio + log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_prop))
+
+            #        mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
+            #    }
+
+            #    mh_ratio <- mh_ratio + (dbeta(rho_prop, prior_rho_a[id], prior_rho_b[id], log = T) + rho_prop_app - 2 * log(1 + exp(rho_prop_app)))
+            #    mh_ratio <- mh_ratio - (dbeta(rho_mcmc[id], prior_rho_a[id], prior_rho_b[id], log = T) + rho_mcmc_app - 2 * log(1 + exp(rho_mcmc_app)))
+            #    # print(round(mh_ratio,4))
+
+            #    alpha_mh <- min(1, exp(mh_ratio))
+
+            #    # rho = exp(x)/(1+exp(x))
+
+            #    # f_x(x) = f_r(r) dr/dx
+            #    if (is.na(alpha_mh)) {
+            #        print("mh_ratio is NA rho")
+            #        alpha_mh <- 0
+            #    }
+            #    alpha_rho[id] <- alpha_rho[id] + alpha_mh
+            #    if (runif(1, 0, 1) < alpha_mh) {
+            #        rho_mcmc[id] <- rho_prop
+            #        x_s_mcmc[, id] <- x_s_prop[, id]
+            #        x_c_mcmc[, id] <- x_c_prop[, id]
+            #        theta_cop[, id] <- theta_cop_prop[, id]
+            #    } else {
+            #        x_s_prop[, id] <- x_s_mcmc[, id]
+            #        x_c_prop[, id] <- x_c_mcmc[, id]
+            #        theta_cop_prop[, id] <- theta_cop[, id]
+            #    }
+            # }
+            # NOTE new
             x_s_prop <- x_s_mcmc
             x_c_prop <- x_c_mcmc
             theta_cop_prop <- theta_cop
+
             for (id in 1:d)
             {
                 cond_var_c <- 1 / lambda_c_mcmc[id, id]
                 cond_var_s <- 1 / lambda_s_mcmc[id, id]
+                sd_c <- sqrt(cond_var_c)
+                sd_s <- sqrt(cond_var_s)
 
                 rho_mcmc_app <- log(rho_mcmc[id] / (1 - rho_mcmc[id]))
                 rho_prop_app <- rnorm(1, rho_mcmc_app, sd_rho[id])
-                # rho_prop_app = rho_mcmc_app
-                rho_prop <- exp(rho_prop_app) / (1 + exp(rho_prop_app))
+                rho_prop <- plogis(rho_prop_app) # exp(rho_prop_app) / (1 + exp(rho_prop_app))
 
+                theta_cop_prop[, id] <- 2 * pi * func_cdf_wc(theta[, id] - mu_mcmc[id], 0, rho_prop)
 
-                for (iobs in 1:n)
-                {
-                    theta_cop_prop[iobs, id] <- 2 * pi * func_cdf_wc(theta[iobs, id] - mu_mcmc[id], 0, rho_prop)
-                }
                 x_s_prop[, id] <- r_mcmc[, id] * sin(theta_cop_prop[, id])
                 x_c_prop[, id] <- r_mcmc[, id] * cos(theta_cop_prop[, id])
 
-                mh_ratio <- 0
-                for (iobs in 1:n)
-                {
-                    cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
-                    cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
+                cond_mean_c_vec <- -cond_var_c * as.vector(
+                    x_c_mcmc[, -id, drop = FALSE] %*% lambda_c_mcmc[id, -id]
+                )
 
-                    mh_ratio <- mh_ratio + dnorm(x_c_prop[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
-                    mh_ratio <- mh_ratio + dnorm(x_s_prop[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+                cond_mean_s_vec <- -cond_var_s * as.vector(
+                    x_s_mcmc[, -id, drop = FALSE] %*% lambda_s_mcmc[id, -id]
+                )
 
-                    mh_ratio <- mh_ratio - dnorm(x_c_mcmc[iobs, id], cond_mean_c, cond_var_c^0.5, log = T)
-                    mh_ratio <- mh_ratio - dnorm(x_s_mcmc[iobs, id], cond_mean_s, cond_var_s^0.5, log = T)
+                mh_ratio <- sum(dnorm(x_c_prop[, id], cond_mean_c_vec, sd_c, log = TRUE)) +
+                    sum(dnorm(x_s_prop[, id], cond_mean_s_vec, sd_s, log = TRUE)) -
+                    sum(dnorm(x_c_mcmc[, id], cond_mean_c_vec, sd_c, log = TRUE)) -
+                    sum(dnorm(x_s_mcmc[, id], cond_mean_s_vec, sd_s, log = TRUE))
 
-                    mh_ratio <- mh_ratio + log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_prop))
+                mh_ratio <- mh_ratio +
+                    sum(func_logd_wc(theta[, id], mu_mcmc[id], rho_prop)) -
+                    sum(func_logd_wc(theta[, id], mu_mcmc[id], rho_mcmc[id]))
 
-                    mh_ratio <- mh_ratio - log(func_d_wc(theta[iobs, id], mu_mcmc[id], rho_mcmc[id]))
-                }
-
-                mh_ratio <- mh_ratio + (dbeta(rho_prop, prior_rho_a[id], prior_rho_b[id], log = T) + rho_prop_app - 2 * log(1 + exp(rho_prop_app)))
-                mh_ratio <- mh_ratio - (dbeta(rho_mcmc[id], prior_rho_a[id], prior_rho_b[id], log = T) + rho_mcmc_app - 2 * log(1 + exp(rho_mcmc_app)))
-                # print(round(mh_ratio,4))
+                mh_ratio <- mh_ratio +
+                    (dbeta(rho_prop, prior_rho_a[id], prior_rho_b[id], log = TRUE) +
+                        rho_prop_app - 2 * log(1 + exp(rho_prop_app))) -
+                    (dbeta(rho_mcmc[id], prior_rho_a[id], prior_rho_b[id], log = TRUE) +
+                        rho_mcmc_app - 2 * log(1 + exp(rho_mcmc_app)))
 
                 alpha_mh <- min(1, exp(mh_ratio))
 
-                # rho = exp(x)/(1+exp(x))
-
-                # f_x(x) = f_r(r) dr/dx
                 if (is.na(alpha_mh)) {
                     print("mh_ratio is NA rho")
                     alpha_mh <- 0
                 }
+
                 alpha_rho[id] <- alpha_rho[id] + alpha_mh
-                if (runif(1, 0, 1) < alpha_mh) {
+
+                if (log(runif(1)) < mh_ratio) {
                     rho_mcmc[id] <- rho_prop
                     x_s_mcmc[, id] <- x_s_prop[, id]
                     x_c_mcmc[, id] <- x_c_prop[, id]
@@ -348,41 +476,81 @@ mcmc_cwc <- function(
 
 
             ##### r
+            # NOTE old
+            # for (id in 1:d)
+            # {
+            #    x_s_prop <- x_s_mcmc
+            #    x_c_prop <- x_c_mcmc
+
+            #    cond_var_c <- 1 / lambda_c_mcmc[id, id]
+            #    cond_var_s <- 1 / lambda_s_mcmc[id, id]
+            #    cond_sigma <- diag(c(1 / lambda_c_mcmc[id, id], 1 / lambda_s_mcmc[id, id]))
+            #    inv_cond_sigma <- solve(cond_sigma)
+            #    for (iobs in 1:n)
+            #    {
+            #        cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
+            #        cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
+
+            #        cond_mean <- matrix(c(cond_mean_c, cond_mean_s), nrow = 2)
+
+            #        uvec <- matrix(c(cos(theta_cop[iobs, id] - 0), sin(theta_cop[iobs, id] - 0)), nrow = 2)
+
+
+            #        A <- t(uvec) %*% (inv_cond_sigma) %*% uvec
+            #        B <- t(uvec) %*% (inv_cond_sigma) %*% cond_mean
+
+
+            #        v1sim <- runif(1, 0, exp(-0.5 * A * (r_mcmc[iobs, id] - B / A)^2))
+            #        v2sim <- runif(1, 0, 1)
+            #        rho1 <- B / A + max(-B / A, -sqrt(-2 * log(v1sim) / A))
+            #        rho2 <- B / A + sqrt(-2 * log(v1sim) / A)
+
+            #        r_mcmc[iobs, id] <- ((rho2^2 - rho1^2) * v2sim + rho1^2)^(1 / 2)
+
+            #        x_s_mcmc[iobs, id] <- r_mcmc[iobs, id] * sin(theta_cop[iobs, id] - 0)
+            #        x_c_mcmc[iobs, id] <- r_mcmc[iobs, id] * cos(theta_cop[iobs, id] - 0)
+            #    }
+            # }
+            # NOTE new
             for (id in 1:d)
             {
-                x_s_prop <- x_s_mcmc
-                x_c_prop <- x_c_mcmc
-
                 cond_var_c <- 1 / lambda_c_mcmc[id, id]
                 cond_var_s <- 1 / lambda_s_mcmc[id, id]
-                cond_sigma <- diag(c(1 / lambda_c_mcmc[id, id], 1 / lambda_s_mcmc[id, id]))
-                inv_cond_sigma <- solve(cond_sigma)
-                for (iobs in 1:n)
-                {
-                    cond_mean_c <- 0 - cond_var_c * sum(lambda_c_mcmc[id, -id] * (x_c_mcmc[iobs, -id] - 0))
-                    cond_mean_s <- -cond_var_s * sum(lambda_s_mcmc[id, -id] * x_s_mcmc[iobs, -id])
 
-                    cond_mean <- matrix(c(cond_mean_c, cond_mean_s), nrow = 2)
+                prec_c <- lambda_c_mcmc[id, id]
+                prec_s <- lambda_s_mcmc[id, id]
 
-                    uvec <- matrix(c(cos(theta_cop[iobs, id] - 0), sin(theta_cop[iobs, id] - 0)), nrow = 2)
+                cc <- cos(theta_cop[, id])
+                ss <- sin(theta_cop[, id])
 
+                cond_mean_c_vec <- -cond_var_c * as.vector(
+                    x_c_mcmc[, -id, drop = FALSE] %*% lambda_c_mcmc[id, -id]
+                )
 
-                    A <- t(uvec) %*% (inv_cond_sigma) %*% uvec
-                    B <- t(uvec) %*% (inv_cond_sigma) %*% cond_mean
+                cond_mean_s_vec <- -cond_var_s * as.vector(
+                    x_s_mcmc[, -id, drop = FALSE] %*% lambda_s_mcmc[id, -id]
+                )
 
+                A_vec <- prec_c * cc^2 + prec_s * ss^2
+                B_vec <- prec_c * cc * cond_mean_c_vec + prec_s * ss * cond_mean_s_vec
 
-                    v1sim <- runif(1, 0, exp(-0.5 * A * (r_mcmc[iobs, id] - B / A)^2))
-                    v2sim <- runif(1, 0, 1)
-                    rho1 <- B / A + max(-B / A, -sqrt(-2 * log(v1sim) / A))
-                    rho2 <- B / A + sqrt(-2 * log(v1sim) / A)
+                BA_vec <- B_vec / A_vec
+                quad_vec <- -0.5 * A_vec * (r_mcmc[, id] - BA_vec)^2
 
-                    r_mcmc[iobs, id] <- ((rho2^2 - rho1^2) * v2sim + rho1^2)^(1 / 2)
+                u1 <- runif(n)
+                u2 <- runif(n)
 
-                    x_s_mcmc[iobs, id] <- r_mcmc[iobs, id] * sin(theta_cop[iobs, id] - 0)
-                    x_c_mcmc[iobs, id] <- r_mcmc[iobs, id] * cos(theta_cop[iobs, id] - 0)
-                }
+                v1sim <- u1 * exp(quad_vec)
+                rad <- sqrt(-2 * log(v1sim) / A_vec)
+
+                rho1 <- BA_vec + pmax(-BA_vec, -rad)
+                rho2 <- BA_vec + rad
+
+                r_mcmc[, id] <- sqrt((rho2^2 - rho1^2) * u2 + rho1^2)
+
+                x_s_mcmc[, id] <- r_mcmc[, id] * ss
+                x_c_mcmc[, id] <- r_mcmc[, id] * cc
             }
-
             ### sigma
             # print(cov(x_s_mcmc[, 1], x_s_mcmc[, 3]))
             # print(c(x_s_mcmc[1, 1:6]))
@@ -443,14 +611,23 @@ mcmc_cwc <- function(
 
 
                 mh_ratio <- 0
-                for (iobs in 1:n)
-                {
-                    mh_ratio <- mh_ratio + (-0.5 * c(log_det_c_prop) - 0.5 * t(x_c_mcmc[iobs, ] - 0) %*% lambda_c_prop %*% (x_c_mcmc[iobs, ] - 0))
-                    mh_ratio <- mh_ratio + (-0.5 * c(log_det_s_prop) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_prop %*% (x_s_mcmc[iobs, ]))
+                # for (iobs in 1:n)
+                # {
+                #    mh_ratio <- mh_ratio + (-0.5 * c(log_det_c_prop) - 0.5 * t(x_c_mcmc[iobs, ] - 0) %*% lambda_c_prop %*% (x_c_mcmc[iobs, ] - 0))
+                #    mh_ratio <- mh_ratio + (-0.5 * c(log_det_s_prop) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_prop %*% (x_s_mcmc[iobs, ]))
 
-                    mh_ratio <- mh_ratio - (-0.5 * c(log_det_c_mcmc) - 0.5 * t(x_c_mcmc[iobs, ] - 0) %*% lambda_c_mcmc %*% (x_c_mcmc[iobs, ] - 0))
-                    mh_ratio <- mh_ratio - (-0.5 * c(log_det_s_mcmc) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_mcmc %*% (x_s_mcmc[iobs, ]))
-                }
+                #    mh_ratio <- mh_ratio - (-0.5 * c(log_det_c_mcmc) - 0.5 * t(x_c_mcmc[iobs, ] - 0) %*% lambda_c_mcmc %*% (x_c_mcmc[iobs, ] - 0))
+                #    mh_ratio <- mh_ratio - (-0.5 * c(log_det_s_mcmc) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_mcmc %*% (x_s_mcmc[iobs, ]))
+                # }
+                Sc <- crossprod(x_c_mcmc)
+                Ss <- crossprod(x_s_mcmc)
+
+                mh_ratio <- mh_ratio + (
+                    -0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc) -
+                        0.5 * n * log_det_s_prop - 0.5 * sum(lambda_s_prop * Ss) +
+                        0.5 * n * log_det_c_mcmc + 0.5 * sum(lambda_c_mcmc * Sc) +
+                        0.5 * n * log_det_s_mcmc + 0.5 * sum(lambda_s_mcmc * Ss)
+                )
 
                 # prior
                 mh_ratio <- mh_ratio + dInvWishart(sigma_s_prop, prior_sigma_nu, prior_sigma_psi, log = T)
@@ -466,7 +643,7 @@ mcmc_cwc <- function(
                     mh_ratio <- -Inf
                 }
                 alpha_sigma <- alpha_sigma + min(1, exp(mh_ratio))
-                if (runif(1, 0, 1) < exp(mh_ratio)) {
+                if (log(runif(1, 0, 1)) < mh_ratio) {
                     print("ACC")
                     sigma_s_mcmc <- sigma_s_prop
                     sigma_c_mcmc <- sigma_c_prop

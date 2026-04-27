@@ -174,11 +174,12 @@ save(parout, file = paste(
 mmm <- 10
 #
 source("functions/mcmc_tpn.R")
+Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
 out_mcmc <- mcmc_tpn(
   theta = theta, # the circualr data
-  burnin = 1000 * mmm, # burnin
-  thin = 1 * mmm, # thin
-  iterations = 3000 * mmm, # total interations
+  burnin = 10, # burnin
+  thin = 1, # thin
+  iterations = 100, # total interations
   prior_mu_mean = matrix(0, nrow = d, ncol = 1), # the prior on the mean is N(prior_mu_mean,prior_mu_var )
   prior_mu_var = rep(100000, d),
   prior_kappa_mean = matrix(0, nrow = d, ncol = 1), # the prior for k is  TN(prior_kappa_mean,prior_kappa_var )
@@ -200,7 +201,8 @@ out_mcmc <- mcmc_tpn(
   sd_mu_scal = 1,
   par_sigma_adapt = 5000
 )
-
+Rprof(NULL)
+summaryRprof("mcmc_tpn_line.out", lines = "show")
 # # # # # # # # # # # # # #
 # I extract the posterior samples of the parameters
 # # # # # # # # # # # # # #
