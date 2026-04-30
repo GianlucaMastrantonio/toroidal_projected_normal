@@ -7,6 +7,7 @@ library(truncnorm)
 library(matrixcalc)
 library(LaplacesDemon)
 library(Rfast)
+setwd("/Users/gianlucamastrantonio/Politecnico di Torino Staff Dropbox/Gianluca Mastrantonio/lavori/gitrepo/toroidal_projected_normal")
 source("functions/general_functions.R")
 source("functions/mcmc_tpn.R")
 
@@ -25,10 +26,10 @@ parout <- list()
 counter <- 1
 
 seed_list <- c(2, 20)
-select_d <- c(2, 4)
+select_d <- 1
 
 select_n <- 4
-select_kappa <- 1
+select_kappa <- 2
 select_sigma <- 2
 select_chain <- 1
 
@@ -173,6 +174,50 @@ save(parout, file = paste(
 
 mmm <- 10
 #
+mean_init <- apply(theta, 2, function(x) atan2(sum(sin(x)), sum(cos(x))))
+kappa_init <- rep(1, d)
+r_init <- matrix(1, n, d)
+x_init <- matrix(0, n, d)
+y_init <- matrix(0, n, d)
+
+for (i in 1:d)
+{
+  theta_app <- theta[, i] - mean_init[i]
+  u <- runif(n)
+  C <- mean(cos(theta))
+  S <- mean(sin(theta))
+  R <- sqrt(C^2 + S^2)
+  V <- 1 - R
+  kappa_init[i] <- 1 / sqrt(2 * V)
+
+  r_app <- r_rice(n, kappa_init, sigma = 1)
+
+
+  # r_direct <- sqrt(-2 * log(u))
+  # r_app <- r_direct
+  x_app <- r_app * cos(theta_app)
+  y_app <- r_app * sin(theta_app)
+  # x_app <- x_app - mean(x_app) + 1
+  # y_app <- y_app - mean(y_app)
+
+  # ttt <- atan2(y_app, x_app)
+  # qq <- quantile((ttt) + pi, prob = c(0.15, 0.85)) - pi
+  # kappa_init[i] <- cos(qq[2]) / sin(qq[2])
+  # x_app <- x_app + kappa_init[i]
+  # r_init[, i] <- sqrt(x_app^2 + y_app^2)
+  # x_init[, i] <- x_app
+  y_init[, i] <- y_app
+}
+sigma_init <- cov(y_init)
+
+
+
+
+
+
+
+
+
 source("functions/mcmc_tpn.R")
 Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
 out_mcmc <- mcmc_tpn(

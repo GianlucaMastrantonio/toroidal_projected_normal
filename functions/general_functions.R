@@ -1,3 +1,11 @@
+r_rice <- function(n, nu, sigma = 1) {
+  x <- rnorm(n, mean = nu, sd = sigma)
+
+  y <- rnorm(n, mean = 0, sd = sigma)
+
+  sqrt(x^2 + y^2)
+}
+
 safe_dInvWishart <- function(S, nu, Psi, log = TRUE) {
   out <- tryCatch(
     dInvWishart(S, nu, Psi, log = log),
