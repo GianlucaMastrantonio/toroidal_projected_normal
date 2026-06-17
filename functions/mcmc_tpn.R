@@ -20,7 +20,10 @@ mcmc_tpn <- function(
   sd_mu_scal,
   par_sigma_adapt,
   na_index = list(NA),
-  do_ESS = TRUE
+  do_only_ESS = TRUE,
+  n_test_sigma = 10,
+  type_ess = 1,
+  do_ind = FALSE
 ) {
     d <- dim(theta)[2]
     n <- dim(theta)[1]
@@ -150,7 +153,9 @@ mcmc_tpn <- function(
     sum_log_dens_data <- rep(0, n)
     sum_sq_log_dens_data <- rep(0, n)
     log_sum_dens_data <- rep(-Inf, n)
-    save_acc_sigma <- rep(NA, burn_thin + thin * (sample_to_save - 1))
+    ess_acc_sigma <- rep(NA, burn_thin + thin * (sample_to_save - 1))
+    counts_ess <- rep(NA, burn_thin + thin * (sample_to_save - 1))
+    metropolis_acc_sigma <- rep(NA, burn_thin + thin * (sample_to_save - 1))
     prop_prec_sigma_mcmc <- 0.5
     sigma_iw_mcmc <- sigma_s_mcmc
     sigma_iw_prop <- sigma_s_mcmc
@@ -164,6 +169,12 @@ mcmc_tpn <- function(
 
     chol_lambda_s_mcmc <- t(cholesky(lambda_s_mcmc))
     idx_lower <- lower.tri(chol_lambda_s_mcmc, diag = FALSE)
+    f_r_ess <- matrix(0, nrow = n, ncol = d)
+    f_prime_r_ess <- matrix(0, nrow = n, ncol = d)
+    v_r_ess <- matrix(0, nrow = n, ncol = d)
+    L_prop_raw <- matrix(0, nrow = d, ncol = d)
+
+    chol_lambda_s_prop <- matrix(0, nrow = d, ncol = d)
     for (imcmc in 1:sample_to_save)
     {
         for (jmcmc in 1:burn_thin)
@@ -350,11 +361,13 @@ mcmc_tpn <- function(
 
             var_p_c <- sigma_c_mcmc / n # solve(n * lambda_c_mcmc)
             var_p_s <- sigma_s_mcmc / n # solve(n * lambda_s_mcmc)
-            for (iobs in 1:n)
-            {
-                mu_p_c <- mu_p_c + lambda_c_mcmc %*% t(x_c_prop[iobs, , drop = F])
-                mu_p_s <- mu_p_s + lambda_s_mcmc %*% t(x_s_prop[iobs, , drop = F])
-            }
+            # for (iobs in 1:n)
+            # {
+            #    mu_p_c <- mu_p_c + lambda_c_mcmc %*% t(x_c_prop[iobs, , drop = F])
+            #    mu_p_s <- mu_p_s + lambda_s_mcmc %*% t(x_s_prop[iobs, , drop = F])
+            # }
+            mu_p_c <- mu_p_c + lambda_c_mcmc %*% matrix(colSums(x_c_prop), ncol = 1)
+            mu_p_s <- mu_p_s + lambda_s_mcmc %*% matrix(colSums(x_s_prop), ncol = 1)
             mu_p_c <- var_p_c %*% mu_p_c
             mu_p_s <- var_p_s %*% mu_p_s
 
@@ -501,9 +514,13 @@ mcmc_tpn <- function(
                 u1 <- runif(n)
                 u2 <- runif(n)
 
-                v1sim <- u1 * exp(quad_vec)
-                rad <- sqrt(-2 * log(v1sim) / A_vec)
+                # v1sim <- u1 * exp(quad_vec)
+                # rad <- sqrt(-2 * log(v1sim) / A_vec)
 
+                # rho1 <- BA_vec + pmax(-BA_vec, -rad)
+                # rho2 <- BA_vec + rad
+                log_v1sim <- log(u1) + quad_vec
+                rad <- sqrt(-2 * log_v1sim / A_vec)
                 rho1 <- BA_vec + pmax(-BA_vec, -rad)
                 rho2 <- BA_vec + rad
 
@@ -548,237 +565,494 @@ mcmc_tpn <- function(
 
             # prop_sigma <- sigma_s_mcmc + Emat
             # NOTE: new sigma
+            # type_ess <- 1
+            #print(c(do_ind, do_only_ESS))
+            if (do_ind == FALSE) {
+                # molt_ident <- diag(d)
+                
+                if (do_only_ESS == TRUE) {
+                    ess_acc_sigma[sum_iter] <- 0
+                    counts_ess[sum_iter] <- 0
+                    # SECTION: ESS su FULL CONDITIONAL X_s
+                    if (type_ess == 1) {
+                        # ! Da fare solo all'inizio
+                        ess_acc_sigma[sum_iter] <- 0
+                        # PRIOR/SULL CONDITIONAL
+                        par_nu_post <- prior_sigma_nu + n
+                        par_xi <- par_nu_post + 1 - (1:d)
+                        par_psi_post_s <- prior_sigma_psi
+                        par_psi_post_s <- par_psi_post_s + crossprod(x_s_mcmc)
+                        # for (iobs in 1:n)
+                        # {
+                        #    par_psi_post_s <- par_psi_post_s + t(x_s_mcmc[iobs, , drop = F]) %*% (x_s_mcmc[iobs, , drop = F])
+                        # }
+                        chol_par_psi_post_s <- t(cholesky(chol2inv(cholesky(par_psi_post_s))))
+                        # inv_chol_par_psi_post_s <- solve(chol_par_psi_post_s)
 
 
-            if (do_ESS == TRUE) {
-                # PRIOR/SULL CONDITIONAL
-                par_nu_post <- prior_sigma_nu + n
-                par_xi <- par_nu_post + 1 - (1:d)
-                par_psi_post_s <- prior_sigma_psi
-                for (iobs in 1:n)
-                {
-                    par_psi_post_s <- par_psi_post_s + t(x_s_mcmc[iobs, , drop = F]) %*% (x_s_mcmc[iobs, , drop = F])
-                }
-                chol_par_psi_post_s <- t(cholesky(chol2inv(cholesky(par_psi_post_s))))
-                inv_chol_par_psi_post_s <- solve(chol_par_psi_post_s)
+                        chol_lambda_s_mcmc <- t(cholesky(lambda_s_mcmc))
+                        # init
+                        Xc_cent <- sweep(x_c_mcmc, 2, kappa_mcmc, FUN = "-")
+                        # Xs <- x_s_mcmc
+                        Sc <- crossprod(Xc_cent)
+                        # Ss <- crossprod(Xs)
+                        mu_fc <- log(par_xi) / 2
+                        var_fc <- (2 / (par_xi * 4))
+
+                        sd_fc <- sqrt(var_fc)
+                        bartlett_mcmc <- forwardsolve(
+                            chol_par_psi_post_s,
+                            chol_lambda_s_mcmc,
+                            upper.tri = FALSE
+                        )
+                        # L_prop_raw <- bartlett_mcmc
+                        for (itest in 1:n_test_sigma)
+                        {
+                            # bartlett_mcmc <- inv_chol_par_psi_post_s %*% chol_lambda_s_mcmc
 
 
-                chol_lambda_s_mcmc <- t(cholesky(lambda_s_mcmc))
+                            f_m_ess <- bartlett_mcmc[idx_lower]
+                            f_c_ess <- log(diag(bartlett_mcmc))
 
-                # init
-                chol_lambda_s_prop <- matrix(0, nrow = d, ncol = d)
+                            # NOTE ESS
 
+                            v_m_ess <- rnorm(n_par_sigma - d, 0, 1)
+                            v_c_ess <- rnorm(d, mu_fc, sd_fc)
+                            log_diag_mcmc <- f_c_ess
+                            u_ess <- runif(1, 0, 1)
+                            log_y <- log(u_ess)
+                            log_y <- log_y + (-0.5 * n * log_det_c_mcmc - 0.5 * sum(lambda_c_mcmc * Sc))
+                            log_y <- log_y + (-sum(dnorm(log_diag_mcmc, mu_fc, sd_fc, log = T)) + sum(dchisq(exp(2 * log_diag_mcmc), df = par_xi, log = TRUE) + log(2) + 2 * log_diag_mcmc))
+                            # log_y <- log_y + (-0.5 * n * log_det_c_mcmc - 0.5 * sum(lambda_c_mcmc * Sc) - 0.5 * n * log_det_s_mcmc - 0.5 * sum(lambda_s_mcmc * Ss))
+                            # log_y <- log_y + (-sum(dnorm(log_diag_mcmc, log = T)) + sum(dchisq(exp(2 * log_diag_mcmc), df = prior_sigma_nu + 1 - (1:d), log = TRUE) + log(2) + 2 * log_diag_mcmc))
 
-                Xc_cent <- sweep(x_c_mcmc, 2, kappa_mcmc, FUN = "-")
-                # Xs <- x_s_mcmc
-                Sc <- crossprod(Xc_cent)
-                # Ss <- crossprod(Xs)
-
-                bartlett <- inv_chol_par_psi_post_s %*% chol_lambda_s_mcmc
-
-                f_m_ess <- bartlett[idx_lower]
-                f_c_ess <- log(diag(bartlett))
-
-                # NOTE ESS
-                mu_fc <- log(par_xi) / 2
-                var_fc <- (2 / (par_xi * 4))
-                v_m_ess <- rnorm(n_par_sigma - d, 0, 1)
-                v_c_ess <- rnorm(d, mu_fc, (var_fc)^0.5)
-
-                log_diag_mcmc <- f_c_ess
-                u_ess <- runif(1, 0, 1)
-                log_y <- log(u_ess)
-                log_y <- log_y + (-0.5 * n * log_det_c_mcmc - 0.5 * sum(lambda_c_mcmc * Sc))
-                log_y <- log_y + (-sum(dnorm(log_diag_mcmc, mu_fc, (var_fc)^0.5, log = T)) + sum(dchisq(exp(2 * log_diag_mcmc), df = par_xi, log = TRUE) + log(2) + 2 * log_diag_mcmc))
-                # log_y <- log_y + (-0.5 * n * log_det_c_mcmc - 0.5 * sum(lambda_c_mcmc * Sc) - 0.5 * n * log_det_s_mcmc - 0.5 * sum(lambda_s_mcmc * Ss))
-                # log_y <- log_y + (-sum(dnorm(log_diag_mcmc, log = T)) + sum(dchisq(exp(2 * log_diag_mcmc), df = prior_sigma_nu + 1 - (1:d), log = TRUE) + log(2) + 2 * log_diag_mcmc))
-
-                #
-                theta_ess <- runif(1, 0, 2 * pi)
-                theta_min_ess <- theta_ess - 2 * pi
-                theta_max_ess <- theta_ess
-
-                #
-                acc <- FALSE
-                save_acc_sigma[sum_iter] <- 0
-                while (acc == FALSE) {
-                    f_prime_m_ess <- f_m_ess * cos(theta_ess) + v_m_ess * sin(theta_ess)
-                    f_prime_c_ess <- mu_fc + (f_c_ess - mu_fc) * cos(theta_ess) + (v_c_ess - mu_fc) * sin(theta_ess)
-
-                    if (min(f_prime_c_ess) < -45) {
-                        # reject this angle
-
-                        if (theta_ess < 0) {
-                            theta_min_ess <- theta_ess
-                        } else {
+                            #
+                            theta_ess <- runif(1, 0, 2 * pi)
+                            theta_min_ess <- theta_ess - 2 * pi
                             theta_max_ess <- theta_ess
+
+                            #
+                            max_ess_steps <- 500
+                            ess_step <- 0
+                            acc <- FALSE
+
+                            while ((acc == FALSE) && (ess_step < max_ess_steps)) {
+                                if (!is.finite(theta_min_ess) || !is.finite(theta_max_ess) ||
+
+                                    (theta_max_ess - theta_min_ess) < 1e-12) {
+                                    break
+                                }
+                                cos_t <- cos(theta_ess)
+                                sin_t <- sin(theta_ess)
+                                ess_step <- ess_step + 1
+                                f_prime_m_ess <- f_m_ess * cos_t + v_m_ess * sin_t
+                                f_prime_c_ess <- mu_fc + (f_c_ess - mu_fc) * cos_t + (v_c_ess - mu_fc) * sin_t
+
+                                if (min(f_prime_c_ess) < -80 || any(!is.finite(f_prime_c_ess))) {
+                                    if (theta_ess < 0) {
+                                        theta_min_ess <- theta_ess
+                                    } else {
+                                        theta_max_ess <- theta_ess
+                                    }
+
+                                    if (theta_max_ess <= theta_min_ess) break
+
+                                    theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+
+                                    next
+                                }
+                                L_prop_raw[] <- 0
+                                L_prop_raw[idx_lower] <- f_prime_m_ess
+                                diag(L_prop_raw) <- exp(f_prime_c_ess)
+                                # chol_lambda_s_prop[idx_lower] <- f_prime_m_ess
+                                # diag(chol_lambda_s_prop) <- exp(f_prime_c_ess)
+                                chol_lambda_s_prop <- chol_par_psi_post_s %*% L_prop_raw
+
+                                prop_sigma <- tryCatch(
+                                    chol2inv(t(chol_lambda_s_prop)),
+                                    error = function(e) NULL
+                                )
+                                if (is.null(prop_sigma) || any(!is.finite(prop_sigma))) {
+                                    if (theta_ess < 0) {
+                                        theta_min_ess <- theta_ess
+                                    } else {
+                                        theta_max_ess <- theta_ess
+                                    }
+
+                                    if (theta_max_ess <= theta_min_ess) break
+
+                                    theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+
+                                    next
+                                }
+
+                                prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
+                                res_test <- test_sigma_mcmc(prop_sigma)
+                                counts_ess[sum_iter] <- counts_ess[sum_iter] + 1
+                                if (res_test$ind == TRUE) {
+                                    ess_acc_sigma[sum_iter] <- ess_acc_sigma[sum_iter] + 1
+                                    sigma_s_prop <- prop_sigma
+                                    sigma_c_prop <- abs(prop_sigma)
+
+                                    sigma_s_prop <- (sigma_s_prop + t(sigma_s_prop)) / 2
+                                    sigma_c_prop <- (sigma_c_prop + t(sigma_c_prop)) / 2
+
+                                    chol_sigma_c_prop <- res_test$chol_sigma_c
+                                    chol_sigma_s_prop <- res_test$chol_sigma_s
+                                    lambda_c_prop <- chol2inv(chol_sigma_c_prop)
+                                    lambda_s_prop <- chol_lambda_s_prop %*% t(chol_lambda_s_prop)
+
+                                    log_det_c_prop <- 2 * sum(log(diag(chol_sigma_c_prop)))
+                                    log_det_s_prop <- 2 * sum(log(diag(chol_sigma_s_prop)))
+
+                                    log_diag_prop <- f_prime_c_ess
+                                    # log_d_prop <- (-0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc) - 0.5 * n * log_det_s_prop - 0.5 * sum(lambda_s_prop * Ss))
+                                    # log_d_prop <- log_d_prop + (-sum(dnorm(log_diag_prop, log = T)) + sum(dchisq(exp(2 * log_diag_prop), df = prior_sigma_nu + 1 - (1:d), log = TRUE) + log(2) + 2 * log_diag_prop))
+                                    log_d_prop <- (-0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc))
+                                    log_d_prop <- log_d_prop + (-sum(dnorm(log_diag_prop, mu_fc, sd_fc, log = T)) + sum(dchisq(exp(2 * log_diag_prop), df = par_xi, log = TRUE) + log(2) + 2 * log_diag_prop))
+
+                                    if (is.finite(log_d_prop) && log_d_prop > log_y) {
+                                        acc <- TRUE
+
+
+                                        sigma_s_mcmc <- sigma_s_prop
+                                        sigma_c_mcmc <- sigma_c_prop
+
+                                        lambda_s_mcmc <- lambda_s_prop
+                                        lambda_c_mcmc <- lambda_c_prop
+
+                                        log_det_c_mcmc <- log_det_c_prop
+                                        log_det_s_mcmc <- log_det_s_prop
+
+                                        chol_lambda_s_mcmc <- chol_lambda_s_prop
+
+                                        bartlett_mcmc <- L_prop_raw
+                                    }
+                                } else {
+                                    
+                                }
+                                if (theta_ess < 0) {
+                                    theta_min_ess <- theta_ess
+                                } else {
+                                    theta_max_ess <- theta_ess
+                                }
+                                theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+                            }
+                            if (!acc) {}
                         }
-
-                        theta_ess <- runif(1, theta_min_ess, theta_max_ess)
-
-                        next
                     }
+                    # SECTION: ESS su PRIOR
+                    if (type_ess == 2) {
+                        error("Type 2 ESS not implemented")
+                    }
+                    ## SECTION: ESS su FULL CONDITIONAL X_s - COn R e  Kappa
 
-                    chol_lambda_s_prop[idx_lower] <- f_prime_m_ess
-                    diag(chol_lambda_s_prop) <- exp(f_prime_c_ess)
-                    chol_lambda_s_prop <- chol_par_psi_post_s %*% chol_lambda_s_prop
+                    # SECTION: ESS su PRIOR con kappa e sigma
+                    if (type_ess == 3) {
+                        error("Type 3 ESS not implemented")
+                    }
+                    ess_acc_sigma[sum_iter] <- ess_acc_sigma[sum_iter] / counts_ess[sum_iter]
+                } else {
+                    #### NO ESS
+                    metropolis_acc_sigma[sum_iter] <- 0
+                    for (itest in 1:n_test_sigma)
+                    {
+                        nu_adapt <- par_sigma_adapt + d +1
+                        #prop_sigma <- rWishart(1, nu_adapt, sigma_s_mcmc / nu_adapt)[, , 1]
+                        prop_sigma <- rInvWishart(1, nu_adapt, (nu_adapt- d - 1 ) *sigma_s_mcmc  )[, , 1]
 
-                    prop_sigma <- tryCatch(
-                        chol2inv(t(chol_lambda_s_prop)),
-                        error = function(e) NULL
-                    )
-                    if (is.null(prop_sigma)) {
-                        if (theta_ess < 0) {
-                            theta_min_ess <- theta_ess
-                        } else {
-                            theta_max_ess <- theta_ess
+                        prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
+
+                    # print("Test Sigma")
+                        # print(par_sigma_adapt)
+                        res_test <- test_sigma_mcmc(prop_sigma)
+                        if (res_test$ind == TRUE) {
+                            #print("A")
+                            metropolis_acc_sigma[sum_iter] <- metropolis_acc_sigma[sum_iter] + 1
+                            sigma_s_prop <- prop_sigma
+                            sigma_c_prop <- abs(prop_sigma)
+
+                            sigma_s_prop <- (sigma_s_prop + t(sigma_s_prop)) / 2
+                            sigma_c_prop <- (sigma_c_prop + t(sigma_c_prop)) / 2
+
+                            chol_sigma_c_prop <- res_test$chol_sigma_c
+                            chol_sigma_s_prop <- res_test$chol_sigma_s
+                            lambda_c_prop <- chol2inv(chol_sigma_c_prop)
+                            lambda_s_prop <- chol2inv(chol_sigma_s_prop)
+
+                            # log_det_c_mcmc <-
+                            log_det_c_prop <- 2 * sum(log(diag(chol_sigma_c_prop)))
+
+                            # log_det_s_mcmc <-
+                            log_det_s_prop <- 2 * sum(log(diag(chol_sigma_s_prop)))
+
+
+                            mh_ratio <- 0
+                            # for (iobs in 1:n)
+                            # {
+                            #    mh_ratio <- mh_ratio + (-0.5 * c(log_det_c_prop) - 0.5 * t(x_c_mcmc[iobs, ] - kappa_mcmc) %*% lambda_c_prop %*% (x_c_mcmc[iobs, ] - kappa_mcmc))
+                            #    mh_ratio <- mh_ratio + (-0.5 * c(log_det_s_prop) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_prop %*% (x_s_mcmc[iobs, ]))
+
+                            #    mh_ratio <- mh_ratio - (-0.5 * c(log_det_c_mcmc) - 0.5 * t(x_c_mcmc[iobs, ] - kappa_mcmc) %*% lambda_c_mcmc %*% (x_c_mcmc[iobs, ] - kappa_mcmc))
+                            #    mh_ratio <- mh_ratio - (-0.5 * c(log_det_s_mcmc) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_mcmc %*% (x_s_mcmc[iobs, ]))
+                            # }
+                            Xc_cent <- sweep(x_c_mcmc, 2, kappa_mcmc, FUN = "-")
+                            Xs <- x_s_mcmc
+                            Sc <- crossprod(Xc_cent)
+                            Ss <- crossprod(Xs)
+                            mh_ratio <- mh_ratio + (
+                                -0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc) -
+                                    0.5 * n * log_det_s_prop - 0.5 * sum(lambda_s_prop * Ss) +
+                                    0.5 * n * log_det_c_mcmc + 0.5 * sum(lambda_c_mcmc * Sc) +
+                                    0.5 * n * log_det_s_mcmc + 0.5 * sum(lambda_s_mcmc * Ss))
+
+
+                            # print("Data")
+                            # print(mh_ratio)
+
+                            # prior
+                            # print("Prior")
+                            mh_ratio <- mh_ratio + dInvWishart(sigma_s_prop, prior_sigma_nu, prior_sigma_psi, log = T)
+                            mh_ratio <- mh_ratio - dInvWishart(sigma_s_mcmc, prior_sigma_nu, prior_sigma_psi, log = T)
+                            # print(mh_ratio)
+                            ### proposal
+                            # print("Proposal")
+                            mh_ratio <- mh_ratio - (dInvWishart(prop_sigma, nu_adapt, (nu_adapt- d - 1 )  *sigma_s_mcmc , log = T))
+                            mh_ratio <- mh_ratio + (dInvWishart(sigma_s_mcmc, nu_adapt, (nu_adapt- d - 1 ) *prop_sigma , log = T))
+                            # print(mh_ratio)
+
+                            if (is.na(exp(mh_ratio))) {
+                                print("New NA alpha")
+                                mh_ratio <- -Inf
+                            }
+                            #print(mh_ratio)
+                            alpha_sigma <- alpha_sigma + min(1, exp(mh_ratio)) / n_test_sigma
+                            if (log(runif(1, 0, 1)) < mh_ratio) {
+                                # print("ACC")
+                                sigma_s_mcmc <- sigma_s_prop
+                                sigma_c_mcmc <- sigma_c_prop
+
+                                lambda_s_mcmc <- lambda_s_prop
+                                lambda_c_mcmc <- lambda_c_prop
+
+                                log_det_c_mcmc <- log_det_c_prop
+                                log_det_s_mcmc <- log_det_s_prop
+
+                                chol_lambda_s_mcmc <- t(cholesky(lambda_s_mcmc))
+
+                                # sigma_iw_mcmc <- sigma_iw_prop
+                                # prop_prec_sigma_mcmc <- prop_prec_sigma_prop
+                            }
                         }
-
-                        theta_ess <- runif(1, theta_min_ess, theta_max_ess)
-
-                        next
                     }
-
-                    prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
-                    res_test <- test_sigma_mcmc(prop_sigma)
-                    if (res_test$ind == TRUE) {
-                        sigma_s_prop <- prop_sigma
-                        sigma_c_prop <- abs(prop_sigma)
-
-                        sigma_s_prop <- (sigma_s_prop + t(sigma_s_prop)) / 2
-                        sigma_c_prop <- (sigma_c_prop + t(sigma_c_prop)) / 2
-
-                        chol_sigma_c_prop <- res_test$chol_sigma_c
-                        chol_sigma_s_prop <- res_test$chol_sigma_s
-                        lambda_c_prop <- chol2inv(chol_sigma_c_prop)
-                        lambda_s_prop <- chol_lambda_s_prop %*% t(chol_lambda_s_prop)
-
-                        log_det_c_prop <- 2 * sum(log(diag(chol_sigma_c_prop)))
-                        log_det_s_prop <- 2 * sum(log(diag(chol_sigma_s_prop)))
-
-                        log_diag_prop <- f_prime_c_ess
-                        # log_d_prop <- (-0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc) - 0.5 * n * log_det_s_prop - 0.5 * sum(lambda_s_prop * Ss))
-                        # log_d_prop <- log_d_prop + (-sum(dnorm(log_diag_prop, log = T)) + sum(dchisq(exp(2 * log_diag_prop), df = prior_sigma_nu + 1 - (1:d), log = TRUE) + log(2) + 2 * log_diag_prop))
-                        log_d_prop <- (-0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc))
-                        log_d_prop <- log_d_prop + (-sum(dnorm(log_diag_prop, mu_fc, (var_fc)^0.5, log = T)) + sum(dchisq(exp(2 * log_diag_prop), df = par_xi, log = TRUE) + log(2) + 2 * log_diag_prop))
-
-                        if (is.finite(log_d_prop) && log_d_prop > log_y) {
-                            acc <- TRUE
-
-
-                            sigma_s_mcmc <- sigma_s_prop
-                            sigma_c_mcmc <- sigma_c_prop
-
-                            lambda_s_mcmc <- lambda_s_prop
-                            lambda_c_mcmc <- lambda_c_prop
-
-                            log_det_c_mcmc <- log_det_c_prop
-                            log_det_s_mcmc <- log_det_s_prop
-
-                            chol_lambda_s_mcmc <- chol_lambda_s_prop
-                        }
-                    } else {
-                        save_acc_sigma[sum_iter] <- save_acc_sigma[sum_iter] + 1
-                    }
-                    if (theta_ess < 0) {
-                        theta_min_ess <- theta_ess
-                    } else {
-                        theta_max_ess <- theta_ess
-                    }
-                    theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+                    metropolis_acc_sigma[sum_iter] <- metropolis_acc_sigma[sum_iter] / n_test_sigma
                 }
-
-
-                # lambda_chol_p <- matrix(0, nrow = d, ncol = d)
-                # L[lower.tri(L, diag = TRUE)] <- v
             } else {
-                nu_adapt <- par_sigma_adapt + d - 1
-                prop_sigma <- rWishart(1, nu_adapt, sigma_s_mcmc / nu_adapt)[, , 1]
-
-                prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
-                save_acc_sigma[sum_iter] <- 0
-                print("Test Sigma")
-                print(par_sigma_adapt)
-                res_test <- test_sigma_mcmc(prop_sigma)
-                if (res_test$ind == TRUE) {
-                    print("A")
-                    save_acc_sigma[sum_iter] <- 1
-                    sigma_s_prop <- prop_sigma
-                    sigma_c_prop <- abs(prop_sigma)
-
-                    sigma_s_prop <- (sigma_s_prop + t(sigma_s_prop)) / 2
-                    sigma_c_prop <- (sigma_c_prop + t(sigma_c_prop)) / 2
-
-                    chol_sigma_c_prop <- res_test$chol_sigma_c
-                    chol_sigma_s_prop <- res_test$chol_sigma_s
-                    lambda_c_prop <- chol2inv(chol_sigma_c_prop)
-                    lambda_s_prop <- chol2inv(chol_sigma_s_prop)
-
-                    # log_det_c_mcmc <-
-                    log_det_c_prop <- 2 * sum(log(diag(chol_sigma_c_prop)))
-
-                    # log_det_s_mcmc <-
-                    log_det_s_prop <- 2 * sum(log(diag(chol_sigma_s_prop)))
-
-
-                    mh_ratio <- 0
-                    # for (iobs in 1:n)
-                    # {
-                    #    mh_ratio <- mh_ratio + (-0.5 * c(log_det_c_prop) - 0.5 * t(x_c_mcmc[iobs, ] - kappa_mcmc) %*% lambda_c_prop %*% (x_c_mcmc[iobs, ] - kappa_mcmc))
-                    #    mh_ratio <- mh_ratio + (-0.5 * c(log_det_s_prop) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_prop %*% (x_s_mcmc[iobs, ]))
-
-                    #    mh_ratio <- mh_ratio - (-0.5 * c(log_det_c_mcmc) - 0.5 * t(x_c_mcmc[iobs, ] - kappa_mcmc) %*% lambda_c_mcmc %*% (x_c_mcmc[iobs, ] - kappa_mcmc))
-                    #    mh_ratio <- mh_ratio - (-0.5 * c(log_det_s_mcmc) - 0.5 * t(x_s_mcmc[iobs, ]) %*% lambda_s_mcmc %*% (x_s_mcmc[iobs, ]))
-                    # }
-                    Xc_cent <- sweep(x_c_mcmc, 2, kappa_mcmc, FUN = "-")
-                    Xs <- x_s_mcmc
-                    Sc <- crossprod(Xc_cent)
-                    Ss <- crossprod(Xs)
-                    mh_ratio <- mh_ratio + (
-                        -0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc) -
-                            0.5 * n * log_det_s_prop - 0.5 * sum(lambda_s_prop * Ss) +
-                            0.5 * n * log_det_c_mcmc + 0.5 * sum(lambda_c_mcmc * Sc) +
-                            0.5 * n * log_det_s_mcmc + 0.5 * sum(lambda_s_mcmc * Ss))
-
-
-                    # print("Data")
-                    # print(mh_ratio)
-
-                    # prior
-                    # print("Prior")
-                    mh_ratio <- mh_ratio + dInvWishart(sigma_s_prop, prior_sigma_nu, prior_sigma_psi, log = T)
-                    mh_ratio <- mh_ratio - dInvWishart(sigma_s_mcmc, prior_sigma_nu, prior_sigma_psi, log = T)
-                    # print(mh_ratio)
-                    ### proposal
-                    # print("Proposal")
-                    mh_ratio <- mh_ratio - (dWishart(prop_sigma, nu_adapt, sigma_s_mcmc / nu_adapt, log = T))
-                    mh_ratio <- mh_ratio + (dWishart(sigma_s_mcmc, nu_adapt, prop_sigma / nu_adapt, log = T))
-                    # print(mh_ratio)
-
-                    if (is.na(exp(mh_ratio))) {
-                        print("New NA alpha")
-                        mh_ratio <- -Inf
-                    }
-                    # print(mh_ratio)
-                    alpha_sigma <- alpha_sigma + min(1, exp(mh_ratio))
-                    if (log(runif(1, 0, 1)) < mh_ratio) {
-                        print("ACC")
-                        sigma_s_mcmc <- sigma_s_prop
-                        sigma_c_mcmc <- sigma_c_prop
-
-                        lambda_s_mcmc <- lambda_s_prop
-                        lambda_c_mcmc <- lambda_c_prop
-
-                        log_det_c_mcmc <- log_det_c_prop
-                        log_det_s_mcmc <- log_det_s_prop
-
-
-                        # sigma_iw_mcmc <- sigma_iw_prop
-                        # prop_prec_sigma_mcmc <- prop_prec_sigma_prop
-                    }
-                }
+                sigma_s_mcmc <- diag(1, d)
+                sigma_c_mcmc <- diag(1, d)
+                lambda_s_mcmc <- diag(1, d)
+                lambda_c_mcmc <- diag(1, d)
+                log_det_c_mcmc <- 0
+                log_det_s_mcmc <- 0
             }
 
+
+            # if (do_only_ESS == TRUE) {
+            # lambda_chol_p <- matrix(0, nrow = d, ncol = d)
+            # L[lower.tri(L, diag = TRUE)] <- v
+            # } else {}
+            ## ESS SIGMA AND RHO
+            # if (do_only_ESS == TRUE) {
+            #    # PRIOR/SULL CONDITIONAL
+            #    par_nu_post <- prior_sigma_nu + n
+            #    par_xi <- par_nu_post + 1 - (1:d)
+            #    par_psi_post_s <- prior_sigma_psi
+            #    for (iobs in 1:n)
+            #    {
+            #        par_psi_post_s <- par_psi_post_s + t(x_s_mcmc[iobs, , drop = F]) %*% (x_s_mcmc[iobs, , drop = F])
+            #    }
+            #    chol_par_psi_post_s <- t(cholesky(chol2inv(cholesky(par_psi_post_s))))
+            #    inv_chol_par_psi_post_s <- solve(chol_par_psi_post_s)
+
+
+            #    chol_lambda_s_mcmc <- t(cholesky(lambda_s_mcmc))
+
+            #    # init
+            #    chol_lambda_s_prop <- matrix(0, nrow = d, ncol = d)
+
+
+            #    Xc_cent <- sweep(x_c_mcmc, 2, kappa_mcmc, FUN = "-")
+            #    # Xs <- x_s_mcmc
+            #    Sc <- crossprod(Xc_cent)
+            #    # Ss <- crossprod(Xs)
+
+            #    bartlett_mcmc <- inv_chol_par_psi_post_s %*% chol_lambda_s_mcmc
+
+            #    # NOTE:initial variables
+            #    f_m_ess <- bartlett_mcmc[idx_lower]
+            #    f_c_ess <- log(diag(bartlett_mcmc))
+            #    f_r_ess <- log(r_mcmc)
+
+            #    # SIMULATION FORM "PRIOR"
+            #    # simul R
+            #    sss_r <- 10
+            #    kappa_safe <- pmax(kappa_mcmc, 1e-7)
+            #    kappa2_safe <- kappa_safe^2
+            #    mu_r_ess <- log(kappa_safe) - sss_r / (2 * kappa2_safe)
+            #    var_r_ess <- sss_r / kappa2_safe
+            #    for (id in 1:d)
+            #    {
+            #        v_r_ess[, id] <- rnorm(n, mu_r_ess[id], var_r_ess[id]^0.5)
+            #    }
+            #    for (id in 1:d)
+            #    {
+            #        x_c_prop[, id] <- exp(v_r_ess[, id]) * cos(theta[, id] - mu_mcmc[id])
+            #        x_s_prop[, id] <- exp(v_r_ess[, id]) * sin(theta[, id] - mu_mcmc[id])
+            #    }
+
+            #    mu_fc <- log(par_xi) / 2
+            #    var_fc <- (2 / (par_xi * 4))
+            #    v_m_ess <- rnorm(n_par_sigma - d, 0, 1)
+            #    v_c_ess <- rnorm(d, mu_fc, (var_fc)^0.5)
+            #    log_diag_mcmc <- f_c_ess
+
+            #    # NOTE: Likelihood mcmc
+            #    u_ess <- runif(1, 0, 1)
+            #    log_y <- log(u_ess)
+            #    log_y <- log_y + (-0.5 * n * log_det_c_mcmc - 0.5 * sum(lambda_c_mcmc * Sc))
+            #    log_y <- log_y + (-sum(dnorm(log_diag_mcmc, mu_fc, (var_fc)^0.5, log = T)) + sum(dchisq(exp(2 * log_diag_mcmc), df = par_xi, log = TRUE) + log(2) + 2 * log_diag_mcmc))
+            #    for (id in 1:d)
+            #    {
+            #        log_y <- log_y - sum(dnorm(f_r_ess[, id], mu_r_ess[id], var_r_ess[id]^0.5, log = T))
+            #    }
+            #    log_y <- log_y + sum(f_r_ess)
+
+
+            #    # log_y <- log_y + (-0.5 * n * log_det_c_mcmc - 0.5 * sum(lambda_c_mcmc * Sc) - 0.5 * n * log_det_s_mcmc - 0.5 * sum(lambda_s_mcmc * Ss))
+            #    # log_y <- log_y + (-sum(dnorm(log_diag_mcmc, log = T)) + sum(dchisq(exp(2 * log_diag_mcmc), df = prior_sigma_nu + 1 - (1:d), log = TRUE) + log(2) + 2 * log_diag_mcmc))
+
+            #    #
+            #    theta_ess <- runif(1, 0, 2 * pi)
+            #    theta_min_ess <- theta_ess - 2 * pi
+            #    theta_max_ess <- theta_ess
+
+            #    #
+            #    acc <- FALSE
+            #    ess_acc_sigma[sum_iter] <- 0
+            #    while (acc == FALSE) {
+            #        f_prime_m_ess <- f_m_ess * cos(theta_ess) + v_m_ess * sin(theta_ess)
+            #        f_prime_c_ess <- mu_fc + (f_c_ess - mu_fc) * cos(theta_ess) + (v_c_ess - mu_fc) * sin(theta_ess)
+            #        for (id in 1:d)
+            #        {
+            #            f_prime_r_ess[, id] <- mu_r_ess[id] + (f_r_ess[, id] - mu_r_ess[id]) * cos(theta_ess) + (v_r_ess[, id] - mu_r_ess[id]) * sin(theta_ess)
+            #        }
+
+            #        if (min(f_prime_c_ess) < -45) {
+            #            # reject this angle
+
+            #            if (theta_ess < 0) {
+            #                theta_min_ess <- theta_ess
+            #            } else {
+            #                theta_max_ess <- theta_ess
+            #            }
+
+            #            theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+
+            #            next
+            #        }
+            #        L_prop_raw[idx_lower] <- f_prime_m_ess
+            #        diag(L_prop_raw) <- exp(f_prime_c_ess)
+            #        # chol_lambda_s_prop[idx_lower] <- f_prime_m_ess
+            #        # diag(chol_lambda_s_prop) <- exp(f_prime_c_ess)
+            #        chol_lambda_s_prop <- chol_par_psi_post_s %*% L_prop_raw
+
+            #        prop_sigma <- tryCatch(
+            #            chol2inv(t(chol_lambda_s_prop)),
+            #            error = function(e) NULL
+            #        )
+            #        if (is.null(prop_sigma)) {
+            #            if (theta_ess < 0) {
+            #                theta_min_ess <- theta_ess
+            #            } else {
+            #                theta_max_ess <- theta_ess
+            #            }
+
+            #            theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+
+            #            next
+            #        }
+
+            #        prop_sigma <- (prop_sigma + t(prop_sigma)) / 2
+            #        res_test <- test_sigma_mcmc(prop_sigma)
+            #        if (res_test$ind == TRUE) {
+            #            sigma_s_prop <- prop_sigma
+            #            sigma_c_prop <- abs(prop_sigma)
+
+            #            sigma_s_prop <- (sigma_s_prop + t(sigma_s_prop)) / 2
+            #            sigma_c_prop <- (sigma_c_prop + t(sigma_c_prop)) / 2
+
+            #            chol_sigma_c_prop <- res_test$chol_sigma_c
+            #            chol_sigma_s_prop <- res_test$chol_sigma_s
+            #            lambda_c_prop <- chol2inv(chol_sigma_c_prop)
+            #            lambda_s_prop <- chol_lambda_s_prop %*% t(chol_lambda_s_prop)
+
+            #            log_det_c_prop <- 2 * sum(log(diag(chol_sigma_c_prop)))
+            #            log_det_s_prop <- 2 * sum(log(diag(chol_sigma_s_prop)))
+
+            #            log_diag_prop <- f_prime_c_ess
+            #            for (id in 1:d)
+            #            {
+            #                x_c_prop[, id] <- exp(f_prime_r_ess[, id]) * cos(theta[, id] - mu_mcmc[id])
+            #                x_s_prop[, id] <- exp(f_prime_r_ess[, id]) * sin(theta[, id] - mu_mcmc[id])
+            #            }
+
+            #            Xc_cent <- sweep(x_c_prop, 2, kappa_mcmc, FUN = "-")
+            #            # Xs <- x_s_mcmc
+            #            Sc_prop <- crossprod(Xc_cent)
+            #            # log_d_prop <- (-0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc) - 0.5 * n * log_det_s_prop - 0.5 * sum(lambda_s_prop * Ss))
+            #            # log_d_prop <- log_d_prop + (-sum(dnorm(log_diag_prop, log = T)) + sum(dchisq(exp(2 * log_diag_prop), df = prior_sigma_nu + 1 - (1:d), log = TRUE) + log(2) + 2 * log_diag_prop))
+            #            log_d_prop <- (-0.5 * n * log_det_c_prop - 0.5 * sum(lambda_c_prop * Sc_prop))
+            #            log_d_prop <- log_d_prop + (-sum(dnorm(log_diag_prop, mu_fc, (var_fc)^0.5, log = T)) + sum(dchisq(exp(2 * log_diag_prop), df = par_xi, log = TRUE) + log(2) + 2 * log_diag_prop))
+            #            for (id in 1:d)
+            #            {
+            #                log_d_prop <- log_d_prop - sum(dnorm(f_prime_r_ess[, id], mu_r_ess[id], var_r_ess[id]^0.5, log = T))
+            #            }
+            #            log_d_prop <- log_d_prop + sum(f_prime_r_ess)
+
+            #            if (is.finite(log_d_prop) && log_d_prop > log_y) {
+            #                acc <- TRUE
+
+
+            #                sigma_s_mcmc <- sigma_s_prop
+            #                sigma_c_mcmc <- sigma_c_prop
+
+            #                lambda_s_mcmc <- lambda_s_prop
+            #                lambda_c_mcmc <- lambda_c_prop
+
+            #                log_det_c_mcmc <- log_det_c_prop
+            #                log_det_s_mcmc <- log_det_s_prop
+
+            #                chol_lambda_s_mcmc <- chol_lambda_s_prop
+
+            #                r_mcmc <- exp(f_prime_r_ess)
+            #                x_c_mcmc <- x_c_prop
+            #                x_s_mcmc <- x_s_prop
+            #            }
+            #        } else {
+            #            ess_acc_sigma[sum_iter] <- ess_acc_sigma[sum_iter] + 1
+            #        }
+            #        if (theta_ess < 0) {
+            #            theta_min_ess <- theta_ess
+            #        } else {
+            #            theta_max_ess <- theta_ess
+            #        }
+            #        theta_ess <- runif(1, theta_min_ess, theta_max_ess)
+            #    }
+
+
+            #    # lambda_chol_p <- matrix(0, nrow = d, ncol = d)
+            #    # L[lower.tri(L, diag = TRUE)] <- v
+            # }
 
             ### update of the adaptive parameters
             if ((sum_iter %% adapt_batch == 0)) {
@@ -800,7 +1074,8 @@ mcmc_tpn <- function(
                     }
 
                     # sigma
-                    if (do_ESS == FALSE) {
+                    if ((do_only_ESS == FALSE) & (do_ind == FALSE)) {
+                    #print(c(par_sigma_adapt, alpha_sigma))
                         par_sigma_adapt <- exp(log(par_sigma_adapt) - adapt_a / (adapt_b + sum_iter) * (alpha_sigma - adapt_alpha_target))
                     }
 
@@ -826,35 +1101,34 @@ mcmc_tpn <- function(
             }
         }
 
-        for (iobs in 1:n)
-        {
-            app <- dmvnorm(r_mcmc[iobs, tf_missig_out[iobs, ]] * cos(theta[iobs, tf_missig_out[iobs, ]] - mu_mcmc[tf_missig_out[iobs, ]]), kappa_mcmc[tf_missig_out[iobs, ]], sigma_c_mcmc[tf_missig_out[iobs, ], tf_missig_out[iobs, ]], log = T)
-            app <- app + dmvnorm(r_mcmc[iobs, tf_missig_out[iobs, ]] * sin(theta[iobs, tf_missig_out[iobs, ]] - mu_mcmc[tf_missig_out[iobs, ]]), vec_zero[tf_missig_out[iobs, ]], sigma_s_mcmc[tf_missig_out[iobs, ], tf_missig_out[iobs, ]], log = T)
+        # for (iobs in 1:n)
+        # {
+        #    app <- dmvnorm(r_mcmc[iobs, tf_missig_out[iobs, ]] * cos(theta[iobs, tf_missig_out[iobs, ]] - mu_mcmc[tf_missig_out[iobs, ]]), kappa_mcmc[tf_missig_out[iobs, ]], sigma_c_mcmc[tf_missig_out[iobs, ], tf_missig_out[iobs, ]], log = T)
+        #    app <- app + dmvnorm(r_mcmc[iobs, tf_missig_out[iobs, ]] * sin(theta[iobs, tf_missig_out[iobs, ]] - mu_mcmc[tf_missig_out[iobs, ]]), vec_zero[tf_missig_out[iobs, ]], sigma_s_mcmc[tf_missig_out[iobs, ], tf_missig_out[iobs, ]], log = T)
 
-            for (id in 1:d)
-            {
-                if (tf_missig_out[iobs, id] == T) {
-                    app <- app + log(r_mcmc[iobs, id])
-                }
-            }
+        #    for (id in 1:d)
+        #    {
+        #        if (tf_missig_out[iobs, id] == T) {
+        #            app <- app + log(r_mcmc[iobs, id])
+        #        }
+        #    }
 
 
-            # sum_log_dens_data[iobs] <- sum_log_dens_data[iobs] + app
-            # sum_dens_data[iobs] <- sum_dens_data[iobs] + exp(app)
-            sum_log_dens_data[iobs] <- sum_log_dens_data[iobs] + app
-            sum_sq_log_dens_data[iobs] <- sum_sq_log_dens_data[iobs] + app^2
-            log_sum_dens_data[iobs] <- logsumexp2(log_sum_dens_data[iobs], app)
-        }
+        #    # sum_log_dens_data[iobs] <- sum_log_dens_data[iobs] + app
+        #    # sum_dens_data[iobs] <- sum_dens_data[iobs] + exp(app)
+        #    sum_log_dens_data[iobs] <- sum_log_dens_data[iobs] + app
+        #    sum_sq_log_dens_data[iobs] <- sum_sq_log_dens_data[iobs] + app^2
+        #    log_sum_dens_data[iobs] <- logsumexp2(log_sum_dens_data[iobs], app)
+        # }
     }
-    # waic_llpd <- sum(log(sum_dens_data / sample_to_save))
-    # p_waic <- 2 * sum(log(sum_dens_data / sample_to_save) - sum_log_dens_data / sample_to_save)
-    waic_llpd <- sum(log_sum_dens_data - log(sample_to_save))
 
-    mean_log_dens <- sum_log_dens_data / sample_to_save
-    var_log_dens <- sum_sq_log_dens_data / sample_to_save - mean_log_dens^2
+    # waic_llpd <- sum(log_sum_dens_data - log(sample_to_save))
 
-    p_waic <- sum(var_log_dens)
+    # mean_log_dens <- sum_log_dens_data / sample_to_save
+    # var_log_dens <- sum_sq_log_dens_data / sample_to_save - mean_log_dens^2
+
+    # p_waic <- sum(var_log_dens)
 
 
-    return(list(mu_out = mu_out, kappa_out = kappa_out, sigma_s_out = sigma_s_out, sigma_c_out = sigma_c_out, r_out = r_out, missig_out = missig_out, waic = -2 * (waic_llpd - p_waic), save_acc_sigma = save_acc_sigma))
+    return(list(mu_out = mu_out, kappa_out = kappa_out, sigma_s_out = sigma_s_out, sigma_c_out = sigma_c_out, r_out = r_out, missig_out = missig_out, waic = NA, ess_acc_sigma = list(ess_acc_sigma, metropolis_acc_sigma, counts_ess)))
 }

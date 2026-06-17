@@ -4,3 +4,9 @@ real data/output/*
 real data/data/new_get_Data.R
 real data/data/appfile/
 real data/data/data_stations_code.RData
+real data/data/Initdata.Rdata
+real data/output
+real data/res
+mcmc_tpn_line.out
+simulations/TEST WC.R
+simulations/TEST WC.R 

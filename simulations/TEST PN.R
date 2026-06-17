@@ -26,7 +26,7 @@ parout <- list()
 counter <- 1
 
 seed_list <- c(2, 20)
-select_d <- 1
+select_d <- 3
 
 select_n <- 4
 select_kappa <- 2
@@ -209,13 +209,6 @@ for (i in 1:d)
   y_init[, i] <- y_app
 }
 sigma_init <- cov(y_init)
-
-
-
-
-
-
-
 
 
 source("functions/mcmc_tpn.R")

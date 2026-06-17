@@ -21,7 +21,7 @@ parout <- list()
 counter <- 1
 
 seed_list <- c(2, 20)
-select_d <- 1
+select_d <- 3
 
 select_n <- 4
 select_rho <- 2
@@ -290,12 +290,14 @@ d <- c(3, 6, 12, 100)[select_d] # dimension of the torus
       y_init[, i] <- y_app
     }
     sigma_init <- cov(y_init)
+    source("functions/mcmc_cwn.R")
+    Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
       mmm <- 10
         out_mcmc <- mcmc_cwc(
           theta = theta, # the circualr data
-          burnin = 1000 * mmm, # burnin
-          thin = 1 * mmm, # thin
-          iterations = 3000 * mmm, # total interations
+            burnin = 10, # burnin
+  thin = 1, # thin
+  iterations = 100, # total interations
           prior_mu_mean = matrix(0, nrow = d, ncol = 1), # the prior on the mean is N(prior_mu_mean,prior_mu_var )
           prior_mu_var = rep(100000, d),
           prior_rho_a = rep(1, d), # the prior for B()
@@ -319,7 +321,8 @@ d <- c(3, 6, 12, 100)[select_d] # dimension of the torus
           sd_rho_scal = 0.1,
           par_sigma_adapt = 2000
         )
-
+Rprof(NULL)
+summaryRprof("mcmc_tpn_line.out", lines = "show")
         # # # # # # # # # # # # # #
         # I extract the posterior samples of the parameters
         # # # # # # # # # # # # # #
