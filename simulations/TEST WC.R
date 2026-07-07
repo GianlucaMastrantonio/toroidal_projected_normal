@@ -291,7 +291,7 @@ d <- c(3, 6, 12, 100)[select_d] # dimension of the torus
     }
     sigma_init <- cov(y_init)
     source("functions/mcmc_cwn.R")
-    Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
+    #Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
       mmm <- 10
         out_mcmc <- mcmc_cwc(
           theta = theta, # the circualr data

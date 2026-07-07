@@ -1,3 +1,41 @@
+logsumexp_vec <- function(a, b) {
+  mm <- pmax(a, b)
+  mm + log(exp(a - mm) + exp(b - mm))
+}
+
+log_Z_r <- function(A, m) {
+  out <- rep(NA_real_, length(A))
+
+  ok <- is.finite(A) & is.finite(m) & A > 0
+  if (!any(ok)) {
+    return(out)
+  }
+
+  A0 <- A[ok]
+  m0 <- m[ok]
+
+  x <- m0 * sqrt(A0)
+
+  term1 <- -log(A0) - 0.5 * A0 * m0^2
+  term2 <- log(abs(m0)) + 0.5 * log(2 * pi / A0) + pnorm(x, log.p = TRUE)
+
+  out0 <- numeric(length(A0))
+
+  pos <- m0 > 0
+  neg <- m0 < 0
+  zer <- m0 == 0
+
+  out0[pos] <- logsumexp_vec(term1[pos], term2[pos])
+  out0[zer] <- term1[zer]
+  out0[neg] <- term1[neg] + log1p(-exp(term2[neg] - term1[neg]))
+
+  out[ok] <- out0
+  out
+}
+log_q_r <- function(r, A, m) {
+  log(r) - 0.5 * A * (r - m)^2 - log_Z_r(A, m)
+}
+
 r_rice <- function(n, nu, sigma = 1) {
   x <- rnorm(n, mean = nu, sd = sigma)
 
