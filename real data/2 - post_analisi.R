@@ -1,3 +1,9 @@
+# Post-processing script for the real-data application.
+# It reads posterior samples saved by real data/1 - launch_tpn.R and
+# real data/1 - launch_ctpn.R, computes diagnostics, and prepares summary
+# quantities used in tables and plots.
+
+# Format posterior quantiles for LaTeX tables.
 tex_quantile <- function(quantile, x) {
   paste0(
     "(",
@@ -13,16 +19,14 @@ tex_quantile <- function(quantile, x) {
 
 
 library(glue)
-# tables
-# Fill these matrices
+
+# Empty table blocks filled later with model diagnostics.
 Sigma <- matrix("", 3, 4)
 Sigma_c <- matrix("", 3, 4)
 Mu <- matrix("", 3, 4)
 Kappa <- matrix("", 3, 4)
 
-# Example:
-# Sigma[1,] <- c("1.01","1.00","1.00","1.00","1.00","1.00")
-
+# Create a single LaTeX table row.
 row_tex <- function(label, metric, vals) {
   paste0(
     label, "&", metric, "&",
@@ -31,13 +35,7 @@ row_tex <- function(label, metric, vals) {
   )
 }
 
-# row_tex <- function(label, metric, vals) {
-#  vals <- unname(as.character(vals))
-
-#  paste0(label, " & ", metric, " & ", paste(vals, collapse = " & "), "\\\\")
-# }
-
-
+# Build a LaTeX summary table from matrices of diagnostics.
 table_tex <- function(Sigma,
                       Sigma_c,
                       Mu,
@@ -100,6 +98,7 @@ table_tex <- function(Sigma,
 }
 
 
+# Plot autocorrelation functions from multiple chains on the same panel.
 plot_multi_acf <- function(chain, par_name, par_id, max_lag = 100, par_title = NULL) {
   acf_list <- lapply(chain, function(ch) {
     stats::acf(ch[[par_name]][, par_id], lag.max = max_lag, plot = FALSE)
@@ -129,6 +128,7 @@ library(posterior)
 
 library(stringr)
 
+# Discover real-data posterior output files.
 dir_data <- "real data/output/"
 dir_out <- "real data/output_diagnostic/"
 ff <- list.files(dir_data)
@@ -142,8 +142,8 @@ w <- grep(name_sim, ff)
 ff <- ff[w]
 
 
+# Parse model and sampler settings from output file names.
 df <- data.frame(
-  #  ind_ = str_extract(ff, "(?<=IND)[A-Z]+_[A-Z]+(?=[0-9])"),
   ind = str_extract(ff, "(?<=IND)(TRUE|FALSE)(?=_)"),
   only_ess = str_extract(ff, "(?<=IND(?:TRUE|FALSE)_)(TRUE|FALSE)(?=[0-9])"),
   ntry = as.numeric(str_extract(ff, "(?<=IND(?:TRUE|FALSE)_(?:TRUE|FALSE))[0-9]+")) %% (100),
@@ -155,7 +155,7 @@ df <- data.frame(
   seed = as.numeric(str_extract(ff, "(?<=_seed)[0-9]+"))
 )
 
-
+# Group files sharing the same model and sampler settings.
 df$setting_id <- as.integer(
   interaction(df[, c("ind", "only_ess", "ntry", "do_small", "molt_iter", "model", "do_best_init")],
     drop = TRUE

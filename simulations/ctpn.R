@@ -1,3 +1,7 @@
+# Simulation run for one wrapped Cauchy copula scenario.
+# This file is called by simulations/1 - launch_ctpn.R with an args vector that
+# selects the dimension, data replicate, covariance setting, chain, and sampler
+# options for a single run.
 
 library(CholWishart)
 
@@ -13,20 +17,17 @@ library(toroidalPNcopula)
 #### Simulation
 #### #### #### #### #### ####
 
-# ========
-# funciton to simulate a sigma which is valid after taking the absolute values
-# ========
-
-
+# Containers used while looping over selected simulation settings.
 out <- list()
 parout <- list()
 counter <- 1
 
+# Seed lists make the chain seed, data seed, and covariance seed independent.
 seed_list_chain <- 1:200
 seed_list_data <- 1:999
 seed_list_sigma <- 1:999
 
-#args <- commandArgs(trailingOnly = TRUE)
+# Decode the scenario selected by the launch script.
 app_d <- as.integer(args[1]) # 1:2
 app_rho <- as.integer(args[2]) # 1:4
 app_sigma_ind_dep <- as.integer(args[3]) # 1:2
@@ -39,7 +40,7 @@ do_only_ESS <- c(TRUE, FALSE)[as.integer(args[9])]
 type_ess <- as.integer(args[10])
 n_test_sigma <- as.integer(args[11])
 
-# $d $k $sid $chain $sigma $data
+# Include the sampler options in the output prefix.
 name_sim <- paste(name_sim, do_only_ESS, type_ess, n_test_sigma, "do_best_init=", do_best_init, sep = "")
 print(name_sim)
 select_d <- app_d
@@ -59,8 +60,9 @@ for (select_n in app_n:app_n)
             seed_chain <- seed_list_chain[app_chain] * 1000
             seed_data <- seed_list_data[select_data]
             seed_sigma <- seed_list_sigma[select_sigma_type]
-            # Store the result in the list
 
+            # Select the dimension, sample size, and base latent parameters for
+            # this simulation scenario.
             d <- c(50, 25, 5, 40)[select_d] # dimension of the torus
             n <- c(d * 7, d * 15, d * 7, d * 15, d * 30, d * 45)[select_n] # number of observation
 
@@ -70,12 +72,14 @@ for (select_n in app_n:app_n)
             mu <- rep(0, d)
             kappa <- rep(0, d)
 
+            # Build the two covariance scenarios. The first is independent, the
+            # second has dependence generated from a larger valid covariance
+            # matrix and an exponential distance correlation structure.
             ddddd <- 500
             sigma_array <- array(0, c(ddddd, ddddd, 2))
             sigma_array[, , 1] <- diag(1, ddddd)
 
 
-            # simulation of sigma_s and sigma_c
             set.seed(seed_sigma)
             d_test <- 6
             max_attempts <- 100000
@@ -97,16 +101,14 @@ for (select_n in app_n:app_n)
             chol(Sigma_c)
             chol(Sigma_s)
 
-
+            # Rescale covariance matrices to unit marginal variances.
             B <- diag(1 / diag(Sigma_s^0.5))
             Sigma_s <- B %*% Sigma_s %*% B
             Sigma_c <- B %*% Sigma_c %*% B
 
             set.seed(seed_data)
 
-            # # # # # # # # # # # # # # # # # #
-            # I simulate the linear variables
-            # # # # # # # # # # # # # # # # # #
+            # Simulate the latent linear variables used to generate the copula.
             if (select_n <= 2) {
               x_c <- mvrnorm(n, kappa, Sigma_c)
               x_s <- mvrnorm(n, rep(0, d), Sigma_s)
@@ -116,9 +118,8 @@ for (select_n in app_n:app_n)
             }
 
 
-            # # # # # # # # # # # # # # # # # #
-            # And the circular ones
-            # # # # # # # # # # # # # # # # # #
+            # Project the latent variables onto the torus. These angles define
+            # the copula scale before applying the wrapped Cauchy marginals.
             theta_cop <- matrix(NA, nrow = n, ncol = d)
             for (iobs in 1:n)
             {
@@ -136,49 +137,11 @@ for (select_n in app_n:app_n)
               }
             }
 
-            ## Plot of the data
-            ## This plot the marginal densities of the theta variables on the circle
-            ## and the pairs of variables for d>1
-            # pdf(paste(
-            #  "simulations/output/", name_sim, "cwc_data - ",
-            #  " select_d=", select_d,
-            #  " select_n=", select_n,
-            #  " select_rho=", select_rho,
-            #  " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #  " seed_sigma=" ,select_sigma_type,
-            #  " seed_data=", select_data,
-            #  ".pdf",
-            #  sep = ""
-            # ))
-
-            # par(mfrow = c(2, 2))
-            # for (id in 1:d)
-            # {
-            #  plot(density(theta_cop[, id]),
-            #    main = paste0("density of theta ", id),
-            #    xlab = "theta", ylab = "density", xlim = c(0, 2 * pi)
-            #  )
-            # }
-            # if (d > 1) {
-            #  for (id in 1:(d - 1))
-            #  {
-            #    for (ij in (id + 1):d)
-            #    {
-            #      plot(theta_cop[, id], theta_cop[, ij],
-            #        pch = 20, main = paste0("theta ", id, "vs theta ", ij),
-            #        xlab = "theta", ylab = "theta", xlim = c(0, 2 * pi), ylim = c(0, 2 * pi)
-            #      )
-            #    }
-            #  }
-            # }
-
-            # dev.off()
             ##### ##### ##### ##### ##### ##### #####
             ##### wrapped cauchy marginals
             ##### ##### ##### ##### ##### ##### #####
 
-
+            # Select the wrapped Cauchy marginal parameters.
             mu <- rep(c(0, pi / 6, 2 * pi / 6, 3 * pi / 6, 4 * pi / 6, 5 * pi / 6, 0, pi / 6, 2 * pi / 6, 3 * pi / 6, 4 * pi / 6, 5 * pi / 6), times = 20)[1:d]
 
             rho_mat <- matrix(NA, ncol = dmax, nrow = 4)
@@ -189,19 +152,7 @@ for (select_n in app_n:app_n)
             rho <- rho_mat[select_rho, 1:d]
 
 
-            # cdf_wc = function(theta, mu, rho)
-            # {
-            #    n = length(theta)
-            #    ret = rep(NA, n)
-            #    d0 = cdf_wc_un(0, mu, rho)
-            #    for(i in 1:n)
-            #    {
-            #        ret[i] = cdf_wc_un(theta[i], mu, rho)
-            #    }
-            #    return((ret-d0)%%1)
-            # }
-
-
+            # Transform the copula-scale angles to wrapped Cauchy marginals.
             theta_seq <- seq(0, 2 * pi, by = 0.00001)
             cumulative_wrappedcauchy <- list()
             for (id in 1:d)
@@ -215,52 +166,15 @@ for (select_n in app_n:app_n)
             {
               for (id in 1:d)
               {
-                # w <- which(cumulative_wrappedcauchy[[id]] > (theta_cop[iobs, id] / (2 * pi)))[1]
-                ## theta[iobs, id] <- q_wc(theta_cop[iobs, id] / (2 * pi), 0, rho[id]) + mu[id]
-                # theta[iobs, id] <- (theta_seq[w] + mu[id]) %% (2 * pi)
                 theta[iobs, id] <- (q_wc(theta_cop[iobs, id] / (2 * pi), 0, rho[id]) + mu[id]) %% (2 * pi)
               }
             }
 
-            # pdf(paste(
-            #  "simulations/output/", name_sim, "cwc_data - ",
-            #  " select_d=", select_d,
-            #  " select_n=", select_n,
-            #  " select_rho=", select_rho,
-            #  " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #    " seed_sigma=" ,select_sigma_type,
-            #  " seed_data=", select_data,
-            #  ".pdf",
-            #  sep = ""
-            # ))
-
-            # par(mfrow = c(2, 2))
-            # for (id in 1:d)
-            # {
-            #  hist((theta[, id]),
-            #    main = paste0("density of theta ", id),
-            #    xlab = "theta", ylab = "density", xlim = c(0, 2 * pi)
-            #  )
-            # }
-            # if (d > 1) {
-            #  for (id in 1:(d - 1))
-            #  {
-            #    for (ij in (id + 1):d)
-            #    {
-            #      plot(theta[, id], theta[, ij],
-            #        pch = 20, main = paste0("theta ", id, "vs theta ", ij),
-            #        xlab = "theta", ylab = "theta", xlim = c(0, 2 * pi), ylim = c(0, 2 * pi)
-            #      )
-            #    }
-            #  }
-            # }
-
-            # dev.off()
-
             #### #### #### #### #### ####
             #### MCMC function
             #### #### #### #### #### ####
+
+            # Store the true parameters and simulated data used in this run.
             par_list <- list(
               theta = theta,
               theta_cop = theta_cop,
@@ -274,23 +188,8 @@ for (select_n in app_n:app_n)
               Sigma_s = Sigma_s,
               Sigma_c = Sigma_c
             )
-            # parout[[counter]] <- par_list
-            # save(par_list, file = paste(
-            #  "simulations/output/", name_sim, "cwc_simulations_parameters -",
-            #  #" select_seed=", seed,
-            #  " select_d=", select_d,
-            #   " select_n=", select_n,
-            #   " select_rho=", select_rho,
-            #   " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #  " seed_sigma=" ,select_sigma_type,
-            #  " seed_data=", select_data,
-            #  ".Rdata"
-            # ))
 
-            # rm(x_c)
-            # rm(x_s)
-
+            # Initialize the MCMC chain.
             set.seed(seed_chain)
 
 
@@ -318,12 +217,6 @@ for (select_n in app_n:app_n)
                 y_app <- r_app * sin(theta_app)
 
 
-                # ttt <- atan2(y_app, x_app)
-                # qq <- quantile((ttt) + pi, prob = c(0.15, 0.85)) - pi
-
-                # x_app <- x_app + kappa_init[i]
-                # r_init[, i] <- sqrt(x_app^2 + y_app^2)
-                # x_init[, i] <- x_app
                 y_init[, i] <- y_app
               }
               sigma_init <- cov(y_init)
@@ -339,18 +232,13 @@ for (select_n in app_n:app_n)
             }
             mmm <- m_mcmc
             start <- Sys.time()
-            # options(keep.source = TRUE)
-            # source("functions/mcmc_cwn.R")
-            # Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
 
+            # Fit the wrapped Cauchy copula model.
             out_mcmc <- mcmc_cwc(
               theta = theta, # the circualr data
               burnin = burnin_mcmc * mmm, # burnin
               thin = thin_mcmc * mmm, # thin
               iterations = iter_mcmc * mmm, # total interations
-              # burnin =10, # burnin
-              # thin = 1 , # thin
-              # iterations = 100, # total interations
               prior_mu_mean = matrix(0, nrow = d, ncol = 1), # the prior on the mean is N(prior_mu_mean,prior_mu_var )
               prior_mu_var = rep(100000, d),
               prior_rho_a = rep(1, d), # the prior for B()
@@ -377,13 +265,11 @@ for (select_n in app_n:app_n)
               do_only_ESS = do_only_ESS,
               type_ess = type_ess
             )
-            # Rprof(NULL)
-            # print(summaryRprof("mcmc_tpn_line.out", lines = "show"))
             end <- Sys.time()
             runtime <- end - start
-            # # # # # # # # # # # # # #
-            # I extract the posterior samples of the parameters
-            # # # # # # # # # # # # # #
+
+            # Extract posterior samples and apply the same identification
+            # transformation used for the true parameters.
             mu_out <- out_mcmc$mu_out
             rho_out <- out_mcmc$rho_out
             sigma_s_out <- out_mcmc$sigma_s_out
@@ -394,9 +280,6 @@ for (select_n in app_n:app_n)
             nsim <- nrow(mu_out)
 
 
-            # # # # # # # # # # # # # #
-            # The parameters must be indentified
-            # # # # # # # # # # # # # #
             for (isim in 1:nsim)
             {
               ss <- matrix(sigma_s_out[isim, ], nrow = d)
@@ -404,14 +287,11 @@ for (select_n in app_n:app_n)
 
               sigma_s_out[isim, ] <- B %*% matrix(sigma_s_out[isim, ], nrow = d) %*% B
               sigma_c_out[isim, ] <- B %*% matrix(sigma_c_out[isim, ], nrow = d) %*% B
-              # kappa_out[isim, ] <- kappa_out[isim, ] * diag(B)
-              # for (iobs in 1:n)
-              # {
-              #  r_out[isim, iobs, ] <- r_out[isim, iobs, ] * diag(B)
-              # }
             }
+
+            # Bundle the true values, data, posterior samples, and diagnostics
+            # saved by the simulation study.
             res_list <- list(
-              # "wc seed" = seed,
               "runtime" = runtime,
               "n" = n,
               "d" = d,
@@ -422,21 +302,16 @@ for (select_n in app_n:app_n)
               "x_c" = x_c,
               "x_s" = x_s,
               "theta" = theta,
-              # "r" = r,
               "rho_out" = rho_out,
               "mu_out" = mu_out,
               "sigma_s_out" = sigma_s_out,
               "sigma_c_out" = sigma_c_out,
-              # "r_out" = r_out,
-              # "mcmc_sigma_s_out" = out_mcmc$sigma_s_out,
-              # "mcmc_sigma_c_out" = out_mcmc$sigma_c_out,
               "pos_def_sigma" = out_mcmc$ess_acc_sigma
             )
-            # out[[counter]] <- res_list
 
+            # Save one result file per scenario and chain.
             save(res_list, file = paste(
               "simulations/output/", name_sim, "cwc_simulations_results -",
-              # " select_seed=", seed,
               " select_d=", select_d,
               " select_n=", select_n,
               " select_rho=", select_rho,
@@ -446,56 +321,6 @@ for (select_n in app_n:app_n)
               " seed_data=", select_data,
               ".Rdata"
             ))
-
-
-            ### plot of the parameters chain after identification with the true values
-            #pdf(paste(
-            #  "simulations/output/", name_sim, "cwc_chains -  ",
-            #  " select_d=", select_d,
-            #  " select_n=", select_n,
-            #  " select_rho=", select_rho,
-            #  " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #  " seed_sigma=", select_sigma_type,
-            #  " seed_data=", select_data,
-            #  ".pdf",
-            #  sep = ""
-            #))
-
-            #par(mfrow = c(3, 3))
-            #for (id in 1:d)
-            #{
-            #  plot(mu_out[, id], type = "l", main = round(mu[id], 3))
-            #  abline(h = mu[id], col = 2)
-            #}
-            #par(mfrow = c(3, 3))
-            #for (id in 1:d)
-            #{
-            #  plot(rho_out[, id], type = "l", main = round(rho[id], 3))
-            #  abline(h = rho[id], col = 2)
-            #}
-            #par(mfrow = c(3, 3))
-            #h <- 1
-            #for (id in 1:d)
-            #{
-            #  for (jd in 1:d)
-            #  {
-            #    plot(sigma_s_out[, h], type = "l", main = round(Sigma_s[id, jd], 3))
-            #    abline(h = Sigma_s[id, jd], col = 2)
-            #    h <- h + 1
-            #  }
-            #}
-            #h <- 1
-            #for (id in 1:d)
-            #{
-            #  for (jd in 1:d)
-            #  {
-            #    plot(sigma_c_out[, h], type = "l", main = round(Sigma_c[id, jd], 3))
-            #    abline(h = Sigma_c[id, jd], col = 2)
-            #    h <- h + 1
-            #  }
-            #}
-            #dev.off()
             counter <- counter + 1
           }
         }

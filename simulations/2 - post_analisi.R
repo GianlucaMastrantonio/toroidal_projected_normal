@@ -1,3 +1,9 @@
+# Post-processing script for the simulation study.
+# It reads the posterior samples saved by simulations/1 - launch_tpn.R and
+# simulations/1 - launch_ctpn.R, groups files by simulation scenario, combines
+# chains, and computes convergence and accuracy diagnostics.
+
+# Plot autocorrelation functions from multiple chains on the same panel.
 plot_multi_acf <- function(chain, par_name, par_id, max_lag = 100, par_title = NULL) {
   acf_list <- lapply(chain, function(ch) {
     stats::acf(ch[[par_name]][, par_id], lag.max = max_lag, plot = FALSE)
@@ -22,8 +28,9 @@ plot_multi_acf <- function(chain, par_name, par_id, max_lag = 100, par_title = N
   abline(h = 0, lty = 2)
 }
 
+# Compute univariate ESS for each column and a determinant-based multivariate
+# ESS summary. This is used as an additional diagnostic alongside posterior.
 multiESS_base2 <- function(x, max_lag = 100, eps = 1e-8) {
-  # x <- do.call(rbind, lapply(chain, function(ch) ch[[par_name]]))
   x <- as.matrix(x)
 
   n <- nrow(x)
@@ -68,16 +75,16 @@ library(stringr)
 library(coda)
 library(posterior)
 
+# Select the simulation output files generated with the standard prefix.
 name <- " Simulation"
 ff <- list.files("simulations/output/")
 ff <- ff[startsWith(ff, name)]
 ff_cw <- ff[grepl("cwc", ff)]
 ff_pn <- ff[grepl("tpn", ff)]
 
+# Parse TPN file names into a data frame of simulation settings.
 word_to_remove <- c(name, "do_best_init=", "tpn_simulations_results -  select_d= ", " select_n= ", " select_kappa= ", " select_sigma= ", " select_chain= ", " seed_sigma= ", " seed_data= ", ".Rdata")
 
-# NOTE: PN
-# word_to_remove <- c(name,"TP", "CWC", "_TRUE_1_40", "do_best_init=",  "tpn_simulations_results -  select_d= " ," select_n= ",   " select_kappa= ", " select_sigma= ", " select_chain= ", " seed_sigma= ", " seed_data= ", ".Rdata")
 pattern <- paste(str_escape(word_to_remove), collapse = "|")
 ff_pn_clean <- str_remove_all(ff_pn, pattern)
 split_list <- strsplit(ff_pn_clean, " ")
@@ -90,7 +97,8 @@ for (i in 2:ncol(data_pn)) {
   data_pn[[i]] <- as.numeric(as.character(data_pn[[i]]))
 }
 data_pn[, 1] <- FALSE
-# NOTE: CW
+
+# Parse copula-model file names into a data frame of simulation settings.
 word_to_remove <- c(name, "do_best_init=", "cwc_simulations_results -  select_d= ", " select_n= ", " select_rho= ", " select_sigma= ", " select_chain= ", " seed_sigma= ", " seed_data= ", ".Rdata")
 
 pattern <- paste(str_escape(word_to_remove), collapse = "|")
@@ -105,8 +113,8 @@ for (i in 2:ncol(data_cw)) {
   data_cw[[i]] <- as.numeric(as.character(data_cw[[i]]))
 }
 data_cw[, 1] <- FALSE
-#  SECTION Statistiche
-# ! cw
+
+# Containers for diagnostics and true parameters.
 list_ret_cw <- list()
 list_ret_pn <- list()
 
@@ -121,6 +129,9 @@ paramaters_cw <- list()
 paramaters_pn <- list()
 
 
+# Loop over simulation scenarios. Within each scenario the script loads all
+# available chains, computes diagnostics for the copula model, then repeats the
+# same calculations for the TPN model.
 for (init_sel in c(FALSE))
 {
   for (d_sel in c(4,3, 2, 1))
@@ -152,6 +163,7 @@ for (init_sel in c(FALSE))
               print(ff_plot)
               print(paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_rho=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data))
             } else {
+              # Load all available copula-model chains for this scenario.
               chain <- list()
               load(ff_plot[1])
               chain[[1]] <- res_list
@@ -173,7 +185,8 @@ for (init_sel in c(FALSE))
 
               d <- chain[[1]]$d
 
-              ## chain 1
+              # Compute diagnostics for the unique off-diagonal covariance
+              # elements.
               nsim <- nrow(chain[[1]]$sigma_s_out)
 
               index_non_1 <- which(lower.tri(matrix(0, d, d)))
@@ -588,8 +601,8 @@ for (init_sel in c(FALSE))
               # dev.off()
             }
 
-            # ! PN
-
+            # Repeat the same diagnostics for the TPN model under the matching
+            # simulation scenario.
             w_data <- which(data_pn$do_best_init == init_sel & data_pn$select_d == d_sel & data_pn$select_n == n_sel & data_pn$select_kappa == kappa_sel & select_sigma == data_pn$select_sigma & data_pn$seed_data == seed_data)
             data_plot <- data_pn[w_data, ]
 
@@ -603,6 +616,7 @@ for (init_sel in c(FALSE))
               print(ff_plot)
               print(paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_kappa=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data))
             } else {
+              # Load all available TPN chains for this scenario.
               chain <- list()
               load(ff_plot[1])
               chain[[1]] <- res_list
@@ -1016,6 +1030,7 @@ for (init_sel in c(FALSE))
               #}
               #dev.off()
             }
+            # Save the diagnostic summaries for all scenarios processed so far.
             save(list_ret_cw, list_ret_pn, paramaters_cw, paramaters_pn, file = paste(dir_out, name, "new_post_analisi_results_stat.Rdata", sep = ""))
           }
         }

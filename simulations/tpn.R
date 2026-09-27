@@ -1,3 +1,7 @@
+# Simulation run for one Toroidal Projected Normal scenario.
+# This file is called by simulations/1 - launch_tpn.R with an args vector that
+# selects the dimension, data replicate, covariance setting, chain, and sampler
+# options for a single run.
 
 library(CholWishart)
 
@@ -9,26 +13,20 @@ library(LaplacesDemon)
 library(Rfast)
 library(toroidalPNcopula)
 
-# source("/beegfs/users/gmastrantonio/tokyo/codes/parameters_mcmc.R")
-
 #### #### #### #### #### ####
 #### Simulation
 #### #### #### #### #### ####
 
-
-
-# ========
-# funciton to simulate a sigma which is valid after taking the absolute values
-# ========
-
+# Containers used while looping over selected simulation settings.
 out <- list()
 parout <- list()
 counter <- 1
 
+# Seed lists make the chain seed, data seed, and covariance seed independent.
 seed_list_chain <- 1:200
 seed_list_data <- 1:999
 seed_list_sigma <- 1:999
-#args <- commandArgs(trailingOnly = TRUE)
+# Decode the scenario selected by the launch script.
 app_d  = as.integer(args[1]) # 1:2
 app_k = as.integer(args[2]) # 1:4
 app_sigma_ind_dep = as.integer(args[3]) # 1:2
@@ -43,6 +41,7 @@ n_test_sigma <- as.integer(args[11])
 
 select_d <- app_d
 
+# Include the sampler options in the output prefix.
 name_sim <- paste(name_sim,do_only_ESS, type_ess, n_test_sigma, "do_best_init=", do_best_init, sep = "")
 print(name_sim)
 
@@ -61,8 +60,9 @@ for (select_n in app_n:app_n)
             seed_chain <- seed_list_chain[app_chain]*1000
             seed_data <- seed_list_data[select_data]
             seed_sigma <- seed_list_sigma[select_sigma_type]
-            # Store the result in the list
 
+            # Select the dimension, sample size, and true model parameters for
+            # this simulation scenario.
             d <- c( 50,25,5, 40)[select_d] # dimension of the torus
             n <- c(d*7, d*15, d*7, d*15, d*30, d* 45)[select_n] # number of observation
             
@@ -77,14 +77,13 @@ for (select_n in app_n:app_n)
             kappa_mat[4, ] <- (rep(c(0.49, 1.1, 2.45), (dmax + 3) / 3))[1:dmax]
             kappa <- kappa_mat[select_kappa, 1:d]
 
+            # Build the two covariance scenarios. The first is independent, the
+            # second has dependence generated from a larger valid covariance
+            # matrix and an exponential distance correlation structure.
             ddddd <- 500
             sigma_array <- array(0, c(ddddd, ddddd, 2))
             sigma_array[, , 1] <- diag(1, ddddd)
 
-            # 0.49   -> 0.3
-            # 1,1     -> 0.6
-            # 2.45   -> 0.9
-            # simulation of sigma_s and sigma_c
             set.seed(seed_sigma)
             d_test <- 6
             max_attempts <- 100000
@@ -101,25 +100,12 @@ for (select_n in app_n:app_n)
             Sigma_try[[1]] <- kronecker(sigma_dist, Sigma_try[[1]][1:5,1:5])
             sigma_array[, , 2] <- Sigma_try[[1]]
             Sigma_s <- sigma_array[1:d, 1:d, select_sigma]
-            #if(d == 5)
-            #{
-            
-            #}else{
-            #  if(d == 50)
-            #  {
-            #    Sigma_s <- sigma_array[1:d, 1:d, select_sigma]
-            #  }else{
-            #    if(d == 25)
-            #    {
-            #      Sigma_s <- sigma_array[seq(1,50, by = 2), seq(1,50, by = 2), select_sigma]
-            #    }
-            #  }
-            #}
             
             Sigma_c <- abs(Sigma_s)
             chol(Sigma_c)
             chol(Sigma_s)
 
+            # Rescale covariance matrices to unit marginal variances.
             B <- diag(1 / diag(Sigma_s^0.5))
             Sigma_s <- B %*% Sigma_s %*% B
             Sigma_c <- B %*% Sigma_c %*% B
@@ -127,9 +113,7 @@ for (select_n in app_n:app_n)
 
             set.seed(seed_data)
 
-            # # # # # # # # # # # # # # # # # #
-            # I simulate the linear variables
-            # # # # # # # # # # # # # # # # # #
+            # Simulate the latent linear variables.
             if(select_n <= 2)
             {
               x_c <- mvrnorm(n, kappa, Sigma_c)
@@ -140,9 +124,8 @@ for (select_n in app_n:app_n)
             }
             
 
-            # # # # # # # # # # # # # # # # # #
-            # And the circular ones
-            # # # # # # # # # # # # # # # # # #
+            # Project the latent variables onto the torus and compute the
+            # latent radii.
             theta <- matrix(NA, nrow = n, ncol = d)
             for (iobs in 1:n)
             {
@@ -160,49 +143,11 @@ for (select_n in app_n:app_n)
               }
             }
 
-            ## Plot of the data
-            ## This plot the marginal densities of the theta variables on the circle
-            ## and the pairs of variables for d>1
-            #pdf(paste(
-            #  "simulations/output/", name_sim, "tpn_data - ",  
-            #  " select_d=", select_d,
-            #  " select_n=", select_n,
-            #  " select_kappa=", select_kappa,
-            #  " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #  " seed_sigma=", select_sigma_type,
-            #  " seed_data=" , select_data,
-            #  ".pdf",
-            #  sep = ""
-            #))
-
-            #par(mfrow = c(2, 2))
-            #for (id in 1:d)
-            #{
-            #  plot(density(theta[, id]),
-            #    main = paste0("density of theta ", id),
-            #    xlab = "theta", ylab = "density", xlim = c(0, 2 * pi)
-            #  )
-            #}
-            #if (d > 1) {
-            #  for (id in 1:(d - 1))
-            #  {
-            #    for (ij in (id + 1):d)
-            #    {
-            #      plot(theta[, id], theta[, ij],
-            #        pch = 20, main = paste0("theta ", id, "vs theta ", ij),
-            #        xlab = "theta", ylab = "theta", xlim = c(0, 2 * pi), ylim = c(0, 2 * pi)
-            #      )
-            #    }
-            #  }
-            #}
-
-            #dev.off()
-
             #### #### #### #### #### ####
             #### MCMC function
             #### #### #### #### #### ####
 
+            # Store the true parameters and simulated data used in this run.
             par_list <- list(
               theta = theta,
               x_c = x_c,
@@ -215,22 +160,9 @@ for (select_n in app_n:app_n)
               Sigma_s = Sigma_s,
               Sigma_c = Sigma_c
             )
-            #parout[[counter]] <- par_list
-            #save(par_list, file = paste(
-            #  "simulations/output/", name_sim, "tpn_simulations_parameters -",
-            #  #" select_seed=", seed,
-            #  " select_d=", select_d,
-            #  " select_n=", select_n,
-            #  " select_kappa=", select_kappa,
-            #  " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #  " seed_sigma=", select_sigma_type,
-            #  " seed_data=" , select_data,
-            #  ".Rdata"
-            #))
 
             
-            
+            # Initialize the MCMC chain.
             set.seed(seed_chain)
             if(do_best_init == TRUE)
             {
@@ -253,22 +185,10 @@ for (select_n in app_n:app_n)
                 r_app <- r_rice(n, kappa_init, sigma = 1)
 
 
-                #r_direct <- sqrt(-2 * log(u))
-                #r_app <- r_direct
                 x_app <- r_app * cos(theta_app)
                 y_app <- r_app * sin(theta_app)
-                #x_app <- x_app - mean(x_app) + 1
-                #y_app <- y_app - mean(y_app)
-
-                #ttt <- atan2(y_app, x_app)
-                #qq <- quantile((ttt) + pi, prob = c(0.15, 0.85)) - pi
-                #kappa_init[i] <- cos(qq[2]) / sin(qq[2])
-                #x_app <- x_app + kappa_init[i]
-                #r_init[, i] <- sqrt(x_app^2 + y_app^2)
-                #x_init[, i] <- x_app
                 y_init[, i] <- y_app
               }
-              #sigma_init <- cov(y_init)
               sigma_init <- cov(y_init)
               while (inherits(try(chol(abs(sigma_init)), silent = TRUE), "try-error")) {
 
@@ -283,24 +203,15 @@ for (select_n in app_n:app_n)
             }
             
 
-
             mmm <- m_mcmc
             start <- Sys.time()
 
-
-
-            #options(keep.source = TRUE)
-            #source("functions/mcmc_tpn.R")
-            #Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
-
+            # Fit the Toroidal Projected Normal model.
             out_mcmc <- mcmc_tpn(
               theta = theta, # the circualr data
               burnin = burnin_mcmc * mmm, # burnin
               thin = thin_mcmc * mmm, # thin
               iterations = iter_mcmc * mmm, # total interations
-              #burnin =10, # burnin
-              #thin = 1 , # thin
-              #iterations = 100, # total interations
               prior_mu_mean = matrix(0, nrow = d, ncol = 1), # the prior on the mean is N(prior_mu_mean,prior_mu_var )
               prior_mu_var = rep(100000, d),
               prior_kappa_mean = matrix(0, nrow = d, ncol = 1), # the prior for k is  TN(prior_kappa_mean,prior_kappa_var )
@@ -313,10 +224,6 @@ for (select_n in app_n:app_n)
               kappa_init = kappa_init,
               sigma_init = sigma_init,
               r_init =  r_init,
-              #r_init = r,
-              #mu_init = mu,
-              #kappa_init = kappa,
-              #sigma_init = Sigma_s,
               
 
               # parameters for the adaptive part of Metropolis
@@ -331,14 +238,10 @@ for (select_n in app_n:app_n)
               type_ess = type_ess
 
             )
-            #print("End")
-            #Rprof(NULL)
-            #print(summaryRprof("mcmc_tpn_line.out", lines = "show"))
             end <- Sys.time()
             runtime <- end - start
-            # # # # # # # # # # # # # #
-            # I extract the posterior samples of the parameters
-            # # # # # # # # # # # # # #
+# Extract posterior samples and apply the same identification
+# transformation used for the true parameters.
             mu_out <- out_mcmc$mu_out
             kappa_out <- out_mcmc$kappa_out
             sigma_s_out <- out_mcmc$sigma_s_out
@@ -349,9 +252,6 @@ for (select_n in app_n:app_n)
             nsim <- nrow(mu_out)
 
 
-            # # # # # # # # # # # # # #
-            # The parameters must be indentified
-            # # # # # # # # # # # # # #
             for (isim in 1:nsim)
             {
               ss <- matrix(sigma_s_out[isim, ], nrow = d)
@@ -365,8 +265,9 @@ for (select_n in app_n:app_n)
                 r_out[isim, iobs, ] <- r_out[isim, iobs, ] * diag(B)
               }
             }
+# Bundle the true values, data, posterior samples, and diagnostics
+# saved by the simulation study.
             res_list <- list(
-              #"seed" = seed,
               "runtime" = runtime,
               "n" = n,
               "d" = d,
@@ -377,26 +278,17 @@ for (select_n in app_n:app_n)
               "x_c" = x_c,
               "x_s" = x_s,
               "theta" = theta,
-              #"r" = r,
               "mu_out" = mu_out,
               "kappa_out" = kappa_out,
               "sigma_s_out" = sigma_s_out,
               "sigma_c_out" = sigma_c_out,
-              #"r_out" = r_out,
-              #"mcmc_sigma_s_out" = out_mcmc$sigma_s_out,
-              #"mcmc_sigma_c_out" = out_mcmc$sigma_c_out,
-              #"mcmc_r_out" = out_mcmc$r_out,
-              #"mcmc_kappa_out" = out_mcmc$kappa_out,
               "pos_def_sigma" = out_mcmc$ess_acc_sigma
             )
 
 
-            #out[[counter]] <- res_list
-
-
+            # Save one result file per scenario and chain.
             save(res_list, file = paste(
               "simulations/output/", name_sim, "tpn_simulations_results -",
-              #" select_seed=", seed,
               " select_d=", select_d,
               " select_n=", select_n,
               " select_kappa=", select_kappa,
@@ -406,58 +298,6 @@ for (select_n in app_n:app_n)
               " seed_data=" , select_data,
               ".Rdata"
             ))
-
-
-            #### plot of the parameters chain after identification with the true values
-            #pdf(paste(
-            #  "simulations/output/", name_sim, "tpn_chains - ",
-            #  " select_d=", select_d,
-            #  " select_n=", select_n,
-            #  " select_kappa=", select_kappa,
-            #  " select_sigma=", select_sigma,
-            #  " select_chain=", select_chain,
-            #  " seed_sigma=", select_sigma_type,
-            #  " seed_data=" , select_data,
-            #  ".pdf",
-            #  sep = ""
-            #))
-            ##print(d)
-            ##print(1:d)
-            
-            #par(mfrow = c(3, 3))
-            #for (id in 1:d)
-            #{
-            #  plot(mu_out[, id], type = "l", main = round(mu[id], 3))
-            #  abline(h = mu[id], col = 2)
-            #}
-            #par(mfrow = c(3, 3))
-            #for (id in 1:d)
-            #{
-            #  plot(kappa_out[, id], type = "l", main = round(kappa[id], 3))
-            #  abline(h = kappa[id], col = 2)
-            #}
-            #par(mfrow = c(3, 3))
-            #h <- 1
-            #for (id in 1:d)
-            #{
-            #  for (jd in 1:d)
-            #  {
-            #    plot(sigma_s_out[, h], type = "l", main = round(Sigma_s[id, jd], 3))
-            #    abline(h = Sigma_s[id, jd], col = 2)
-            #    h <- h + 1
-            #  }
-            #}
-            #h <- 1
-            #for (id in 1:d)
-            #{
-            #  for (jd in 1:d)
-            #  {
-            #    plot(sigma_c_out[, h], type = "l", main = round(Sigma_c[id, jd], 3))
-            #    abline(h = Sigma_c[id, jd], col = 2)
-            #    h <- h + 1
-            #  }
-            #}
-            #dev.off()
             
             counter <- counter + 1
           }
