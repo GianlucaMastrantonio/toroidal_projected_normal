@@ -12,23 +12,6 @@ nu_app <- 2
 
 
 
-#name_sim_general <- "Simulation"
-#m_mcmc <- 1
-#iter_mcmc <- 20
-#thin_mcmc <- 1
-#burnin_mcmc <- 4
-#batch_mcmc <- 20
-#a_mcmc <- 10000 / 2
-#b_mcmc <- 12000 / 2
-#alpha_target <- 0.4
-#par_adapt_mcmc <- 5000
-#nu_app <- 2
-
-# ========
-# funciton to simulate a sigma which is valid after taking the absolute values
-# ========
-
-
 for (id_for in 1:4)
 {
   for (ik_for in 4:4)

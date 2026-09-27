@@ -67,33 +67,7 @@ multiESS_base2 <- function(x, max_lag = 100, eps = 1e-8) {
 library(stringr)
 library(coda)
 library(posterior)
-# install.packages(
 
-#  c(
-
-#    "fs",
-
-#    "pkgload",
-
-#    "ellipse",
-
-#    "fftwtools",
-
-#    "testthat",
-
-#    "mcmcse"
-
-#  ),
-
-#  repos = "https://cloud.r-project.org",
-
-#  dependencies = TRUE
-
-# )
-# library(mcmcse)
-# setwd("/Users/gianlucamastrantonio/Politecnico di Torino Staff Dropbox/Gianluca Mastrantonio/lavori/gitrepo/toroidal_projected_normal/simulations/output")
-# name <- " PriorESS"
-# name <- " PriorESSAndR"
 name <- " Simulation"
 ff <- list.files("simulations/output/")
 ff <- ff[startsWith(ff, name)]
@@ -136,28 +110,9 @@ data_cw[, 1] <- FALSE
 list_ret_cw <- list()
 list_ret_pn <- list()
 
-# for(h in 1:.....)
-h <- 0
-# init_sel <- FALSE
-# d_sel <- 1
-# n_sel <- 1
-# kappa_sel <- 4
-# select_sigma <- 1
-# seed_data <- 1
-## h <- 0
-# init_sel <- FALSE
-# d_sel <- 2
-# n_sel <- 1
-# kappa_sel <- 4
-# select_sigma <- 2
-# seed_data <- 100
 
-# init_sel <- FALSE
-# d_sel <- 1
-# n_sel <- 2
-# kappa_sel <- 4
-# select_sigma <- 1
-# seed_data <- 1
+h <- 0
+
 
 old_wd <- getwd()
 setwd(paste(old_wd, "simulations/output", sep = "/"))

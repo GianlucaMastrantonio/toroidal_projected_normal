@@ -2,7 +2,7 @@
 
 R package skeleton for Bayesian MCMC functions for toroidal projected normal and wrapped Cauchy copula models.
 
-The package currently includes the non-mixture functions:
+The package currently includes:
 
 - `mcmc_tpn()`
 - `mcmc_cwc()`
