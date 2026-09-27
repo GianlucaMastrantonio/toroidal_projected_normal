@@ -1,3 +1,17 @@
+#' Simulate from a Rice distribution
+#'
+#' Generates Rice-distributed random variables using the Euclidean norm of two
+#' independent normal random variables.
+#'
+#' @param n Number of random values to generate.
+#' @param nu Noncentrality parameter.
+#' @param sigma Scale parameter. Defaults to `1`.
+#'
+#' @return A numeric vector of length `n`.
+#' @export
+#'
+#' @examples
+#' r_rice(5, nu = 1, sigma = 0.5)
 r_rice <- function(n, nu, sigma = 1) {
   x <- rnorm(n, mean = nu, sd = sigma)
 
@@ -29,6 +43,20 @@ logsumexp2 <- function(a, b) {
 
   m + log(exp(a - m) + exp(b - m))
 }
+#' Wrapped Cauchy quantile function
+#'
+#' Computes the quantile function of the wrapped Cauchy distribution.
+#'
+#' @param u Numeric vector of probabilities. Values must be strictly between
+#'   `0` and `1`.
+#' @param mu Location parameter, in radians.
+#' @param lambda Wrapped Cauchy concentration parameter.
+#'
+#' @return A numeric vector of angles wrapped to `[0, 2 * pi)`.
+#' @export
+#'
+#' @examples
+#' q_wc(c(0.25, 0.5, 0.75), mu = pi, lambda = 0.5)
 q_wc <- function(u, mu, lambda) {
   # Ensure u is in (0,1)
   if (any(u <= 0 | u >= 1)) {
@@ -94,6 +122,20 @@ func_cdf_wc_un <- function(theta_un, mu, rho) {
 #  }
 #  return((ret - d0) %% 1)
 # }
+#' Wrapped Cauchy distribution function
+#'
+#' Computes the distribution function of the wrapped Cauchy distribution.
+#'
+#' @param theta Numeric vector of angles, in radians.
+#' @param mu Location parameter, in radians.
+#' @param rho Wrapped Cauchy parameter.
+#'
+#' @return A numeric vector of cumulative probabilities.
+#' @export
+#'
+#' @examples
+#' theta <- seq(0, 2 * pi, length.out = 5)
+#' func_cdf_wc(theta, mu = pi, rho = 0.5)
 func_cdf_wc <- function(theta, mu, rho) {
   ang <- theta - mu
   z <- ((1 + rho^2) * cos(ang) - 2 * rho) / (1 + rho^2 - 2 * rho * cos(ang))
@@ -112,14 +154,54 @@ func_cdf_wc <- function(theta, mu, rho) {
   (ret - d0) %% 1
 }
 
+#' Wrapped Cauchy density
+#'
+#' Computes the wrapped Cauchy density.
+#'
+#' @param theta Numeric vector of angles, in radians.
+#' @param mu Location parameter, in radians.
+#' @param rho Wrapped Cauchy parameter.
+#'
+#' @return A numeric vector of density values.
+#' @export
+#'
+#' @examples
+#' theta <- seq(0, 2 * pi, length.out = 5)
+#' func_d_wc(theta, mu = pi, rho = 0.5)
 func_d_wc <- function(theta, mu, rho) {
   return(1 / (2 * pi) * ((1 - rho^2) / (1 + rho^2 - 2 * rho * cos(theta - mu))))
 }
 
+#' Wrapped Cauchy log-density
+#'
+#' Computes the logarithm of the wrapped Cauchy density.
+#'
+#' @param theta Numeric vector of angles, in radians.
+#' @param mu Location parameter, in radians.
+#' @param rho Wrapped Cauchy parameter.
+#'
+#' @return A numeric vector of log-density values.
+#' @export
+#'
+#' @examples
+#' theta <- seq(0, 2 * pi, length.out = 5)
+#' func_logd_wc(theta, mu = pi, rho = 0.5)
 func_logd_wc <- function(theta, mu, rho) {
   return(-log(2 * pi) + log(1 - rho^2) - log(1 + rho^2 - 2 * rho * cos(theta - mu)))
 }
 
+#' Simulate a valid covariance matrix
+#'
+#' Draws a covariance matrix from an inverse-Wishart distribution and checks
+#' whether the matrix remains positive definite after taking absolute values.
+#'
+#' @param par1 Degrees-of-freedom parameter passed to the inverse-Wishart
+#'   sampler.
+#' @param par2 Scale matrix passed to the inverse-Wishart sampler.
+#'
+#' @return A list with two elements: the simulated matrix, or `1` on failure,
+#'   and a logical flag indicating whether the Cholesky check succeeded.
+#' @export
 sim_sigma <- function(par1, par2) {
   tryCatch(
     {
@@ -156,6 +238,19 @@ test_sigma_mcmc <- function(Sigma_s) {
     }
   )
 }
+#' Circular CRPS
+#'
+#' Computes a circular continuous ranked probability score for an observed
+#' angular value and posterior draws or imputations.
+#'
+#' @param real_data Observed angular value.
+#' @param missing_vec Numeric vector of posterior draws or imputations.
+#'
+#' @return A numeric score.
+#' @export
+#'
+#' @examples
+#' crps_circ(real_data = 1, missing_vec = c(0.8, 1.1, 1.3))
 crps_circ <- function(real_data, missing_vec) {
   dd <- c(real_data, missing_vec)
 

@@ -1,4 +1,4 @@
-rm(list = ls())
+
 library(CholWishart)
 
 library(MCMCpack)
@@ -7,13 +7,14 @@ library(truncnorm)
 library(matrixcalc)
 library(LaplacesDemon)
 library(Rfast)
-source("functions/general_functions.R")
-source("functions/mcmc_tpn.R")
-source("/beegfs/users/gmastrantonio/tokyo/codes/parameters_mcmc.R")
+library(toroidalPNcopula)
+
+# source("/beegfs/users/gmastrantonio/tokyo/codes/parameters_mcmc.R")
 
 #### #### #### #### #### ####
 #### Simulation
 #### #### #### #### #### ####
+
 
 
 # ========
@@ -27,7 +28,7 @@ counter <- 1
 seed_list_chain <- 1:200
 seed_list_data <- 1:999
 seed_list_sigma <- 1:999
-args <- commandArgs(trailingOnly = TRUE)
+#args <- commandArgs(trailingOnly = TRUE)
 app_d  = as.integer(args[1]) # 1:2
 app_k = as.integer(args[2]) # 1:4
 app_sigma_ind_dep = as.integer(args[3]) # 1:2
@@ -43,7 +44,7 @@ n_test_sigma <- as.integer(args[11])
 select_d <- app_d
 
 name_sim <- paste(name_sim,do_only_ESS, type_ess, n_test_sigma, "do_best_init=", do_best_init, sep = "")
-
+print(name_sim)
 
 for (select_n in app_n:app_n)
 {
@@ -62,8 +63,8 @@ for (select_n in app_n:app_n)
             seed_sigma <- seed_list_sigma[select_sigma_type]
             # Store the result in the list
 
-              d <- c( 50,25,5)[select_d] # dimension of the torus
-            n <- c(d*7, d*15)[select_n] # number of observation
+            d <- c( 50,25,5, 40)[select_d] # dimension of the torus
+            n <- c(d*7, d*15, d*7, d*15, d*30, d* 45)[select_n] # number of observation
             
             dmax <- max(d)
             ### parameters
@@ -76,7 +77,7 @@ for (select_n in app_n:app_n)
             kappa_mat[4, ] <- (rep(c(0.49, 1.1, 2.45), (dmax + 3) / 3))[1:dmax]
             kappa <- kappa_mat[select_kappa, 1:d]
 
-            ddddd <- 600
+            ddddd <- 500
             sigma_array <- array(0, c(ddddd, ddddd, 2))
             sigma_array[, , 1] <- diag(1, ddddd)
 
@@ -97,10 +98,24 @@ for (select_n in app_n:app_n)
             }
             dist_mat = as.matrix(dist(1:100))
             sigma_dist <- exp(-1.6*dist_mat)
-            Sigma_try[[1]] <- kronecker(sigma_dist, Sigma_try[[1]])
+            Sigma_try[[1]] <- kronecker(sigma_dist, Sigma_try[[1]][1:5,1:5])
             sigma_array[, , 2] <- Sigma_try[[1]]
-
             Sigma_s <- sigma_array[1:d, 1:d, select_sigma]
+            #if(d == 5)
+            #{
+            
+            #}else{
+            #  if(d == 50)
+            #  {
+            #    Sigma_s <- sigma_array[1:d, 1:d, select_sigma]
+            #  }else{
+            #    if(d == 25)
+            #    {
+            #      Sigma_s <- sigma_array[seq(1,50, by = 2), seq(1,50, by = 2), select_sigma]
+            #    }
+            #  }
+            #}
+            
             Sigma_c <- abs(Sigma_s)
             chol(Sigma_c)
             chol(Sigma_s)
@@ -115,8 +130,15 @@ for (select_n in app_n:app_n)
             # # # # # # # # # # # # # # # # # #
             # I simulate the linear variables
             # # # # # # # # # # # # # # # # # #
-            x_c <- mvrnorm(n, kappa, Sigma_c)
-            x_s <- mvrnorm(n, rep(0, d), Sigma_s)
+            if(select_n <= 2)
+            {
+              x_c <- mvrnorm(n, kappa, Sigma_c)
+              x_s <- mvrnorm(n, rep(0, d), Sigma_s)
+            }else{
+              x_c <- mvrnorm(d* 45, kappa, Sigma_c)[1:n,]
+              x_s <- mvrnorm(d* 45, rep(0, d), Sigma_s)[1:n,]
+            }
+            
 
             # # # # # # # # # # # # # # # # # #
             # And the circular ones
@@ -309,6 +331,7 @@ for (select_n in app_n:app_n)
               type_ess = type_ess
 
             )
+            #print("End")
             #Rprof(NULL)
             #print(summaryRprof("mcmc_tpn_line.out", lines = "show"))
             end <- Sys.time()
@@ -385,54 +408,57 @@ for (select_n in app_n:app_n)
             ))
 
 
-            ### plot of the parameters chain after identification with the true values
-            pdf(paste(
-              "simulations/output/", name_sim, "tpn_chains - ",
-              " select_d=", select_d,
-              " select_n=", select_n,
-              " select_kappa=", select_kappa,
-              " select_sigma=", select_sigma,
-              " select_chain=", select_chain,
-              " seed_sigma=", select_sigma_type,
-              " seed_data=" , select_data,
-              ".pdf",
-              sep = ""
-            ))
-
-            par(mfrow = c(3, 3))
-            for (id in 1:d)
-            {
-              plot(mu_out[, id], type = "l", main = round(mu[id], 3))
-              abline(h = mu[id], col = 2)
-            }
-            par(mfrow = c(3, 3))
-            for (id in 1:d)
-            {
-              plot(kappa_out[, id], type = "l", main = round(kappa[id], 3))
-              abline(h = kappa[id], col = 2)
-            }
-            par(mfrow = c(3, 3))
-            h <- 1
-            for (id in 1:d)
-            {
-              for (jd in 1:d)
-              {
-                plot(sigma_s_out[, h], type = "l", main = round(Sigma_s[id, jd], 3))
-                abline(h = Sigma_s[id, jd], col = 2)
-                h <- h + 1
-              }
-            }
-            h <- 1
-            for (id in 1:d)
-            {
-              for (jd in 1:d)
-              {
-                plot(sigma_c_out[, h], type = "l", main = round(Sigma_c[id, jd], 3))
-                abline(h = Sigma_c[id, jd], col = 2)
-                h <- h + 1
-              }
-            }
-            dev.off()
+            #### plot of the parameters chain after identification with the true values
+            #pdf(paste(
+            #  "simulations/output/", name_sim, "tpn_chains - ",
+            #  " select_d=", select_d,
+            #  " select_n=", select_n,
+            #  " select_kappa=", select_kappa,
+            #  " select_sigma=", select_sigma,
+            #  " select_chain=", select_chain,
+            #  " seed_sigma=", select_sigma_type,
+            #  " seed_data=" , select_data,
+            #  ".pdf",
+            #  sep = ""
+            #))
+            ##print(d)
+            ##print(1:d)
+            
+            #par(mfrow = c(3, 3))
+            #for (id in 1:d)
+            #{
+            #  plot(mu_out[, id], type = "l", main = round(mu[id], 3))
+            #  abline(h = mu[id], col = 2)
+            #}
+            #par(mfrow = c(3, 3))
+            #for (id in 1:d)
+            #{
+            #  plot(kappa_out[, id], type = "l", main = round(kappa[id], 3))
+            #  abline(h = kappa[id], col = 2)
+            #}
+            #par(mfrow = c(3, 3))
+            #h <- 1
+            #for (id in 1:d)
+            #{
+            #  for (jd in 1:d)
+            #  {
+            #    plot(sigma_s_out[, h], type = "l", main = round(Sigma_s[id, jd], 3))
+            #    abline(h = Sigma_s[id, jd], col = 2)
+            #    h <- h + 1
+            #  }
+            #}
+            #h <- 1
+            #for (id in 1:d)
+            #{
+            #  for (jd in 1:d)
+            #  {
+            #    plot(sigma_c_out[, h], type = "l", main = round(Sigma_c[id, jd], 3))
+            #    abline(h = Sigma_c[id, jd], col = 2)
+            #    h <- h + 1
+            #  }
+            #}
+            #dev.off()
+            
             counter <- counter + 1
           }
         }

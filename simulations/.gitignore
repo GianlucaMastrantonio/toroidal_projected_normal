@@ -16,12 +16,3 @@ real data/_OLD
 real data/data wind wave
 _simulations
 functions
-_functions
-.vscode
-real data/output/*
-_real data
-_plots and tables
-_varie
-real data/output_diagnostic/*
-plots and tables/out/*
-simulations/output_diagnostic/*

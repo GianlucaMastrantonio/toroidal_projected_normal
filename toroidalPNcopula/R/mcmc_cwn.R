@@ -1,3 +1,42 @@
+#' Fit a wrapped Cauchy copula model by MCMC
+#'
+#' Runs the MCMC sampler for the wrapped Cauchy copula model.
+#'
+#' @param theta Matrix of angular observations with `n` rows and `d` columns.
+#' @param burnin Number of burn-in iterations.
+#' @param thin Thinning interval.
+#' @param iterations Total number of MCMC iterations.
+#' @param prior_mu_mean Prior mean for the location parameter.
+#' @param prior_mu_var Prior variance for the location parameter.
+#' @param prior_rho_a First beta-prior shape parameter for `rho`.
+#' @param prior_rho_b Second beta-prior shape parameter for `rho`.
+#' @param prior_sigma_nu Degrees-of-freedom parameter for the inverse-Wishart
+#'   prior on covariance matrices.
+#' @param prior_sigma_psi Scale matrix for the inverse-Wishart prior on
+#'   covariance matrices.
+#' @param mu_init Initial value for `mu`.
+#' @param rho_init Initial value for `rho`.
+#' @param sigma_init Initial covariance matrix.
+#' @param r_init Initial latent radial variables.
+#' @param adapt_batch Batch size for adaptive Metropolis updates.
+#' @param adapt_a First adaptation-control parameter.
+#' @param adapt_b Second adaptation-control parameter.
+#' @param adapt_alpha_target Target acceptance probability for adaptive updates.
+#' @param sd_mu_scal Initial proposal scale for `mu`.
+#' @param sd_rho_scal Initial proposal scale for `rho`.
+#' @param par_sigma_adapt Adaptation parameter for covariance updates.
+#' @param na_index Optional list of missing-value indices by dimension.
+#'   Defaults to `list(NA)`.
+#' @param do_only_ESS Logical; whether to use only elliptical slice sampling
+#'   for selected updates.
+#' @param n_test_sigma Number of attempts/checks used in covariance updates.
+#' @param type_ess Integer selecting the elliptical slice sampler variant.
+#' @param do_ind Logical; whether to use an independence structure.
+#'
+#' @return A list containing posterior samples, missing-value draws when
+#'   present, WAIC-related quantities, and sampler diagnostics.
+#' @seealso [mcmc_tpn()], [func_d_wc()], [func_cdf_wc()]
+#' @export
 mcmc_cwc <- function(
   theta,
   burnin,

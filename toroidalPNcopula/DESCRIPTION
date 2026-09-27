@@ -1,0 +1,13 @@
+Package: toroidalPNcopula
+Title: Toroidal Projected Normal and Copula Models
+Version: 0.0.0.9000
+Authors@R: person("Gianluca", "Mastrantonio", role = c("aut", "cre"), email = "gianluca.mastrantonio@example.com")
+Description: Bayesian MCMC functions for toroidal projected normal models and a related wrapped Cauchy copula model for hypertoroidal data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    LaplacesDemon,
+    stats,
+    truncnorm

@@ -1,7 +1,3 @@
-library(stringr)
-library(coda)
-setwd("/beegfs/users/gmastrantonio/tokyo/simulations/output")
-
 plot_multi_acf <- function(chain, par_name, par_id, max_lag = 100, par_title = NULL) {
   acf_list <- lapply(chain, function(ch) {
     stats::acf(ch[[par_name]][, par_id], lag.max = max_lag, plot = FALSE)
@@ -16,7 +12,7 @@ plot_multi_acf <- function(chain, par_name, par_id, max_lag = 100, par_title = N
     ylim = y,
     xlab = "Lag",
     ylab = "ACF",
-    main = if (is.null(par_title)) paste(par_name, "par", par_id) else par_title
+    main <- if (is.null(par_title)) paste(par_name, "par", par_id) else par_title
   )
 
   for (cc in 2:length(acf_list)) {
@@ -71,10 +67,35 @@ multiESS_base2 <- function(x, max_lag = 100, eps = 1e-8) {
 library(stringr)
 library(coda)
 library(posterior)
+# install.packages(
+
+#  c(
+
+#    "fs",
+
+#    "pkgload",
+
+#    "ellipse",
+
+#    "fftwtools",
+
+#    "testthat",
+
+#    "mcmcse"
+
+#  ),
+
+#  repos = "https://cloud.r-project.org",
+
+#  dependencies = TRUE
+
+# )
+# library(mcmcse)
+# setwd("/Users/gianlucamastrantonio/Politecnico di Torino Staff Dropbox/Gianluca Mastrantonio/lavori/gitrepo/toroidal_projected_normal/simulations/output")
 # name <- " PriorESS"
 # name <- " PriorESSAndR"
-name <- " SimTRUE140"
-ff <- list.files(pattern = c("simulations_result"))
+name <- " Simulation"
+ff <- list.files("simulations/output/")
 ff <- ff[startsWith(ff, name)]
 ff_cw <- ff[grepl("cwc", ff)]
 ff_pn <- ff[grepl("tpn", ff)]
@@ -94,7 +115,7 @@ data_pn[[i]] <- as.logical(as.character(data_pn[[i]]))
 for (i in 2:ncol(data_pn)) {
   data_pn[[i]] <- as.numeric(as.character(data_pn[[i]]))
 }
-
+data_pn[, 1] <- FALSE
 # NOTE: CW
 word_to_remove <- c(name, "do_best_init=", "cwc_simulations_results -  select_d= ", " select_n= ", " select_rho= ", " select_sigma= ", " select_chain= ", " seed_sigma= ", " seed_data= ", ".Rdata")
 
@@ -109,7 +130,7 @@ data_cw[[i]] <- as.logical(as.character(data_cw[[i]]))
 for (i in 2:ncol(data_cw)) {
   data_cw[[i]] <- as.numeric(as.character(data_cw[[i]]))
 }
-
+data_cw[, 1] <- FALSE
 #  SECTION Statistiche
 # ! cw
 list_ret_cw <- list()
@@ -117,33 +138,37 @@ list_ret_pn <- list()
 
 # for(h in 1:.....)
 h <- 0
-init_sel <- FALSE
-d_sel <- 1
-n_sel <- 1
-kappa_sel <- 4
-select_sigma <- 1
-seed_data <- 1
-# h <- 0
-init_sel <- FALSE
-d_sel <- 2
-n_sel <- 1
-kappa_sel <- 4
-select_sigma <- 2
-seed_data <- 100
+# init_sel <- FALSE
+# d_sel <- 1
+# n_sel <- 1
+# kappa_sel <- 4
+# select_sigma <- 1
+# seed_data <- 1
+## h <- 0
+# init_sel <- FALSE
+# d_sel <- 2
+# n_sel <- 1
+# kappa_sel <- 4
+# select_sigma <- 2
+# seed_data <- 100
 
-init_sel <- FALSE
-d_sel <- 1
-n_sel <- 2
-kappa_sel <- 4
-select_sigma <- 1
-seed_data <- 21
+# init_sel <- FALSE
+# d_sel <- 1
+# n_sel <- 2
+# kappa_sel <- 4
+# select_sigma <- 1
+# seed_data <- 1
 
+old_wd <- getwd()
+setwd(paste(old_wd, "simulations/output", sep = "/"))
+dir_out <- paste(old_wd, "simulations/output_diagnostic/", sep = "/")
 paramaters_cw <- list()
 paramaters_pn <- list()
 
+
 for (init_sel in c(FALSE))
 {
-  for (d_sel in c(3,2, 1))
+  for (d_sel in c(4,3, 2, 1))
   {
     for (n_sel in c(1, 2))
     {
@@ -152,7 +177,7 @@ for (init_sel in c(FALSE))
         rho_sel <- kappa_sel
         for (select_sigma in 1:2)
         {
-          for (seed_data in 21:25)
+          for (seed_data in 1:25)
           {
             h <- h + 1
             print(paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_kappa=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data))
@@ -172,7 +197,6 @@ for (init_sel in c(FALSE))
               print(ff_plot)
               print(paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_rho=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data))
             } else {
-
               chain <- list()
               load(ff_plot[1])
               chain[[1]] <- res_list
@@ -191,14 +215,14 @@ for (init_sel in c(FALSE))
                 load(ff_plot[5])
                 chain[[5]] <- res_list
               }
-              
+
               d <- chain[[1]]$d
 
               ## chain 1
               nsim <- nrow(chain[[1]]$sigma_s_out)
 
               index_non_1 <- which(lower.tri(matrix(0, d, d)))
-              paramaters_cw[[h]] <- list(Sigma_s = res_list$Sigma_s, Sigma_c = res_list$Sigma_c, rho = res_list$rho, mu = res_list$mu, pos_def = res_list$pos_def, index_non_1= index_non_1)
+              paramaters_cw[[h]] <- list(Sigma_s = res_list$Sigma_s, Sigma_c = res_list$Sigma_c, rho = res_list$rho, mu = res_list$mu, pos_def = res_list$pos_def, index_non_1 = index_non_1)
               chains <- lapply(chain, function(ch) ch[["sigma_s_out"]])
 
               x <- do.call(abind::abind, c(chains, along = 3))
@@ -439,7 +463,6 @@ for (init_sel in c(FALSE))
               }
               for (iii in 1:length(chain))
               {
-                
                 chain[[iii]]$mu_app <- tot_mean[((iii - 1) * nsim + 1):(iii * nsim), ]
               }
               # chain1$mu_app <- tot_mean[1:nsim, ]
@@ -512,102 +535,102 @@ for (init_sel in c(FALSE))
               list_ret_cw[[h]]$coverage_mu <- coverage
               list_ret_cw[[h]]$ICL_mu <- qq3 - qq1
 
-              # ! PLOTS
-              pdf(paste( name, "new_cw_post_", paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_kappa=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data), ".pdf", sep = ""))
-              par(mfrow = c(3, 3))
-              for (id in 1:d)
-              {
-                plot(chain[[1]]$mu_app[, id], type = "l", main = round(chain[[1]]$mu[id], 3))
-                for (iii in 2:length(chain))
-                {
-                  lines(chain[[iii]]$mu_app[, id], col = iii)
-                }
-                abline(h = pi, col = 2)
-                plot(density(chain[[1]]$mu_app[, id]))
-                for (iii in 2:length(chain))
-                {
-                  lines(density(chain[[iii]]$mu_app[, id]), col = iii)
-                }
-                abline(v = pi, col = 2)
-                plot_multi_acf(chain, "mu_app", id, max_lag = 20)
-              }
-              par(mfrow = c(3, 3))
-              for (id in 1:d) {
-                plot(chain[[1]]$rho_out[, id], type = "l", main = round(chain[[1]]$rho[id], 3))
-                for (iii in 2:length(chain)) {
-                  lines(chain[[iii]]$rho_out[, id], col = iii)
-                }
-                abline(h = chain[[1]]$rho[id], col = 2)
+              ## ! PLOTS
+              # pdf(paste(dir_out, name, "new_cw_post_", paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_kappa=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data), ".pdf", sep = ""))
+              # par(mfrow = c(3, 3))
+              # for (id in 1:d)
+              # {
+              #  plot(chain[[1]]$mu_app[, id], type = "l", main = round(chain[[1]]$mu[id], 3))
+              #  for (iii in 2:length(chain))
+              #  {
+              #    lines(chain[[iii]]$mu_app[, id], col = iii)
+              #  }
+              #  abline(h = pi, col = 2)
+              #  plot(density(chain[[1]]$mu_app[, id]))
+              #  for (iii in 2:length(chain))
+              #  {
+              #    lines(density(chain[[iii]]$mu_app[, id]), col = iii)
+              #  }
+              #  abline(v = pi, col = 2)
+              #  plot_multi_acf(chain, "mu_app", id, max_lag = 20)
+              # }
+              # par(mfrow = c(3, 3))
+              # for (id in 1:d) {
+              #  plot(chain[[1]]$rho_out[, id], type = "l", main = round(chain[[1]]$rho[id], 3))
+              #  for (iii in 2:length(chain)) {
+              #    lines(chain[[iii]]$rho_out[, id], col = iii)
+              #  }
+              #  abline(h = chain[[1]]$rho[id], col = 2)
 
-                plot(density(chain[[1]]$rho_out[, id]))
-                for (iii in 2:length(chain)) {
-                  lines(density(chain[[iii]]$rho_out[, id]), col = iii)
-                }
-                abline(v = chain[[1]]$rho[id], col = 2)
+              #  plot(density(chain[[1]]$rho_out[, id]))
+              #  for (iii in 2:length(chain)) {
+              #    lines(density(chain[[iii]]$rho_out[, id]), col = iii)
+              #  }
+              #  abline(v = chain[[1]]$rho[id], col = 2)
 
-                plot_multi_acf(chain, "rho_out", id, max_lag = 20)
-              }
+              #  plot_multi_acf(chain, "rho_out", id, max_lag = 20)
+              # }
 
-              par(mfrow = c(3, 3))
-              hhhh <- 1
-              for (id in 1:d) {
-                for (jd in 1:d) {
-                  if (jd < id) {
-                    plot(chain[[1]]$sigma_s_out[, hhhh],
-                      type = "l",
-                      main = round(chain[[1]]$Sigma_s[id, jd], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(chain[[iii]]$sigma_s_out[, hhhh], col = iii)
-                    }
-                    abline(h = chain[[1]]$Sigma_s[id, jd], col = 2)
+              # par(mfrow = c(3, 3))
+              # hhhh <- 1
+              # for (id in 1:d) {
+              #  for (jd in 1:d) {
+              #    if (jd < id) {
+              #      plot(chain[[1]]$sigma_s_out[, hhhh],
+              #        type = "l",
+              #        main = round(chain[[1]]$Sigma_s[id, jd], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(chain[[iii]]$sigma_s_out[, hhhh], col = iii)
+              #      }
+              #      abline(h = chain[[1]]$Sigma_s[id, jd], col = 2)
 
-                    plot(density(chain[[1]]$sigma_s_out[, hhhh]),
-                      main = round(rhsat_sigma[hhhh, 1], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(density(chain[[iii]]$sigma_s_out[, hhhh]), col = iii)
-                    }
-                    abline(v = chain[[1]]$Sigma_s[id, jd], col = 2)
+              #      plot(density(chain[[1]]$sigma_s_out[, hhhh]),
+              #        main = round(rhsat_sigma[hhhh, 1], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(density(chain[[iii]]$sigma_s_out[, hhhh]), col = iii)
+              #      }
+              #      abline(v = chain[[1]]$Sigma_s[id, jd], col = 2)
 
-                    plot_multi_acf(chain, "sigma_s_out", hhhh, max_lag = 20, par_title = paste("Sigma_s[", id, ",", jd, "]"))
-                  }
-
-
-                  hhhh <- hhhh + 1
-                }
-              }
-
-              par(mfrow = c(3, 3))
-              hhhh <- 1
-              for (id in 1:d) {
-                for (jd in 1:d) {
-                  if (jd < id) {
-                    plot(chain[[1]]$sigma_c_out[, hhhh],
-                      type = "l",
-                      main = round(chain[[1]]$Sigma_c[id, jd], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(chain[[iii]]$sigma_c_out[, hhhh], col = iii)
-                    }
-                    abline(h = chain[[1]]$Sigma_c[id, jd], col = 2)
-
-                    plot(density(chain[[1]]$sigma_c_out[, hhhh]),
-                      main = round(rhsat_sigma_c[hhhh, 1], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(density(chain[[iii]]$sigma_c_out[, hhhh]), col = iii)
-                    }
-                    abline(v = chain[[1]]$Sigma_c[id, jd], col = 2)
-
-                    plot_multi_acf(chain, "sigma_c_out", hhhh, max_lag = 20, par_title = paste("Sigma_c[", id, ",", jd, "]"))
-                  }
+              #      plot_multi_acf(chain, "sigma_s_out", hhhh, max_lag = 20, par_title = paste("Sigma_s[", id, ",", jd, "]"))
+              #    }
 
 
-                  hhhh <- hhhh + 1
-                }
-              }
-              dev.off()
+              #    hhhh <- hhhh + 1
+              #  }
+              # }
+
+              # par(mfrow = c(3, 3))
+              # hhhh <- 1
+              # for (id in 1:d) {
+              #  for (jd in 1:d) {
+              #    if (jd < id) {
+              #      plot(chain[[1]]$sigma_c_out[, hhhh],
+              #        type = "l",
+              #        main = round(chain[[1]]$Sigma_c[id, jd], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(chain[[iii]]$sigma_c_out[, hhhh], col = iii)
+              #      }
+              #      abline(h = chain[[1]]$Sigma_c[id, jd], col = 2)
+
+              #      plot(density(chain[[1]]$sigma_c_out[, hhhh]),
+              #        main = round(rhsat_sigma_c[hhhh, 1], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(density(chain[[iii]]$sigma_c_out[, hhhh]), col = iii)
+              #      }
+              #      abline(v = chain[[1]]$Sigma_c[id, jd], col = 2)
+
+              #      plot_multi_acf(chain, "sigma_c_out", hhhh, max_lag = 20, par_title = paste("Sigma_c[", id, ",", jd, "]"))
+              #    }
+
+
+              #    hhhh <- hhhh + 1
+              #  }
+              # }
+              # dev.off()
             }
 
             # ! PN
@@ -941,104 +964,104 @@ for (init_sel in c(FALSE))
               list_ret_pn[[h]]$coverage_mu <- coverage
               list_ret_pn[[h]]$ICL_mu <- qq3 - qq1
 
-              # ! PLOTS
-              pdf(paste(name, "new_pn_post_", paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_kappa=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data), ".pdf", sep = ""))
-              par(mfrow = c(3, 3))
-              for (id in 1:d)
-              {
-                plot(chain[[1]]$mu_app[, id], type = "l", main = round(chain[[1]]$mu[id], 3))
-                for (iii in 2:length(chain))
-                {
-                  lines(chain[[iii]]$mu_app[, id], col = iii)
-                }
-                abline(h = pi, col = 2)
-                plot(density(chain[[1]]$mu_app[, id]))
-                for (iii in 2:length(chain))
-                {
-                  lines(density(chain[[iii]]$mu_app[, id]), col = iii)
-                }
-                abline(v = pi, col = 2)
-                plot_multi_acf(chain, "mu_app", id, max_lag = 20)
-              }
-              par(mfrow = c(3, 3))
-              for (id in 1:d) {
-                plot(chain[[1]]$kappa_out[, id], type = "l", main = round(chain[[1]]$kappa[id], 3))
-                for (iii in 2:length(chain)) {
-                  lines(chain[[iii]]$kappa_out[, id], col = iii)
-                }
-                abline(h = chain[[1]]$kappa[id], col = 2)
+              ## ! PLOTS
+              # pdf(paste(dir_out, name, "new_pn_post_", paste("do_best_init=", init_sel, "select_d=", d_sel, "select_n=", n_sel, "select_kappa=", kappa_sel, "select_sigma=", select_sigma, "seed_data=", seed_data), ".pdf", sep = ""))
+              # par(mfrow = c(3, 3))
+              # for (id in 1:d)
+              # {
+              #  plot(chain[[1]]$mu_app[, id], type = "l", main = round(chain[[1]]$mu[id], 3))
+              #  for (iii in 2:length(chain))
+              #  {
+              #    lines(chain[[iii]]$mu_app[, id], col = iii)
+              #  }
+              #  abline(h = pi, col = 2)
+              #  plot(density(chain[[1]]$mu_app[, id]))
+              #  for (iii in 2:length(chain))
+              #  {
+              #    lines(density(chain[[iii]]$mu_app[, id]), col = iii)
+              #  }
+              #  abline(v = pi, col = 2)
+              #  plot_multi_acf(chain, "mu_app", id, max_lag = 20)
+              # }
+              # par(mfrow = c(3, 3))
+              # for (id in 1:d) {
+              #  plot(chain[[1]]$kappa_out[, id], type = "l", main = round(chain[[1]]$kappa[id], 3))
+              #  for (iii in 2:length(chain)) {
+              #    lines(chain[[iii]]$kappa_out[, id], col = iii)
+              #  }
+              #  abline(h = chain[[1]]$kappa[id], col = 2)
 
-                plot(density(chain[[1]]$kappa_out[, id]))
-                for (iii in 2:length(chain)) {
-                  lines(density(chain[[iii]]$kappa_out[, id]), col = iii)
-                }
-                abline(v = chain[[1]]$kappa[id], col = 2)
+              #  plot(density(chain[[1]]$kappa_out[, id]))
+              #  for (iii in 2:length(chain)) {
+              #    lines(density(chain[[iii]]$kappa_out[, id]), col = iii)
+              #  }
+              #  abline(v = chain[[1]]$kappa[id], col = 2)
 
-                plot_multi_acf(chain, "kappa_out", id, max_lag = 20)
-              }
+              #  plot_multi_acf(chain, "kappa_out", id, max_lag = 20)
+              # }
 
-              par(mfrow = c(3, 3))
-              hhhh <- 1
-              for (id in 1:d) {
-                for (jd in 1:d) {
-                  if (jd < id) {
-                    plot(chain[[1]]$sigma_s_out[, hhhh],
-                      type = "l",
-                      main = round(chain[[1]]$Sigma_s[id, jd], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(chain[[iii]]$sigma_s_out[, hhhh], col = iii)
-                    }
-                    abline(h = chain[[1]]$Sigma_s[id, jd], col = 2)
+              # par(mfrow = c(3, 3))
+              # hhhh <- 1
+              # for (id in 1:d) {
+              #  for (jd in 1:d) {
+              #    if (jd < id) {
+              #      plot(chain[[1]]$sigma_s_out[, hhhh],
+              #        type = "l",
+              #        main = round(chain[[1]]$Sigma_s[id, jd], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(chain[[iii]]$sigma_s_out[, hhhh], col = iii)
+              #      }
+              #      abline(h = chain[[1]]$Sigma_s[id, jd], col = 2)
 
-                    plot(density(chain[[1]]$sigma_s_out[, hhhh]),
-                      main = round(rhsat_sigma[hhhh, 1], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(density(chain[[iii]]$sigma_s_out[, hhhh]), col = iii)
-                    }
-                    abline(v = chain[[1]]$Sigma_s[id, jd], col = 2)
+              #      plot(density(chain[[1]]$sigma_s_out[, hhhh]),
+              #        main = round(rhsat_sigma[hhhh, 1], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(density(chain[[iii]]$sigma_s_out[, hhhh]), col = iii)
+              #      }
+              #      abline(v = chain[[1]]$Sigma_s[id, jd], col = 2)
 
-                    plot_multi_acf(chain, "sigma_s_out", hhhh, max_lag = 20)
-                  }
-
-
-                  hhhh <- hhhh + 1
-                }
-              }
-
-              par(mfrow = c(3, 3))
-              hhhh <- 1
-              for (id in 1:d) {
-                for (jd in 1:d) {
-                  if (jd < id) {
-                    plot(chain[[1]]$sigma_c_out[, hhhh],
-                      type = "l",
-                      main = round(chain[[1]]$Sigma_c[id, jd], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(chain[[iii]]$sigma_c_out[, hhhh], col = iii)
-                    }
-                    abline(h = chain[[1]]$Sigma_c[id, jd], col = 2)
-
-                    plot(density(chain[[1]]$sigma_c_out[, hhhh]),
-                      main = round(rhsat_sigma_c[hhhh, 1], 3)
-                    )
-                    for (iii in 2:length(chain)) {
-                      lines(density(chain[[iii]]$sigma_c_out[, hhhh]), col = iii)
-                    }
-                    abline(v = chain[[1]]$Sigma_c[id, jd], col = 2)
-
-                    plot_multi_acf(chain, "sigma_c_out", hhhh, max_lag = 20)
-                  }
+              #      plot_multi_acf(chain, "sigma_s_out", hhhh, max_lag = 20)
+              #    }
 
 
-                  hhhh <- hhhh + 1
-                }
-              }
-              dev.off()
+              #    hhhh <- hhhh + 1
+              #  }
+              # }
+
+              # par(mfrow = c(3, 3))
+              # hhhh <- 1
+              # for (id in 1:d) {
+              #  for (jd in 1:d) {
+              #    if (jd < id) {
+              #      plot(chain[[1]]$sigma_c_out[, hhhh],
+              #        type = "l",
+              #        main = round(chain[[1]]$Sigma_c[id, jd], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(chain[[iii]]$sigma_c_out[, hhhh], col = iii)
+              #      }
+              #      abline(h = chain[[1]]$Sigma_c[id, jd], col = 2)
+
+              #      plot(density(chain[[1]]$sigma_c_out[, hhhh]),
+              #        main = round(rhsat_sigma_c[hhhh, 1], 3)
+              #      )
+              #      for (iii in 2:length(chain)) {
+              #        lines(density(chain[[iii]]$sigma_c_out[, hhhh]), col = iii)
+              #      }
+              #      abline(v = chain[[1]]$Sigma_c[id, jd], col = 2)
+
+              #      plot_multi_acf(chain, "sigma_c_out", hhhh, max_lag = 20)
+              #    }
+
+
+              #    hhhh <- hhhh + 1
+              #  }
+              #}
+              #dev.off()
             }
-            save(list_ret_cw, list_ret_pn, paramaters_cw, paramaters_pn, file = paste(name, "new_post_analisi_results_stat.Rdata", sep = ""))
+            save(list_ret_cw, list_ret_pn, paramaters_cw, paramaters_pn, file = paste(dir_out, name, "new_post_analisi_results_stat.Rdata", sep = ""))
           }
         }
       }
