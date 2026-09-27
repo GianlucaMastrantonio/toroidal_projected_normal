@@ -9,4 +9,8 @@ real data/output
 real data/res
 mcmc_tpn_line.out
 simulations/TEST WC.R
-simulations/TEST WC.R 
+simulations/TEST WC.R
+real data/gauge data/gauge/ 
+real data/ssasas
+real data/_OLD
+real data/data wind wave

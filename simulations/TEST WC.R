@@ -290,7 +290,8 @@ d <- c(3, 6, 12, 100)[select_d] # dimension of the torus
       y_init[, i] <- y_app
     }
     sigma_init <- cov(y_init)
-    source("functions/mcmc_cwn.R")
+    source("functions/general_functions.R")
+    source("functions/mcmc_cwn_mixture.R")
     #Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
       mmm <- 10
         out_mcmc <- mcmc_cwc(

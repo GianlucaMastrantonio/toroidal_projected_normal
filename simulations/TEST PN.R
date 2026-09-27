@@ -9,7 +9,7 @@ library(LaplacesDemon)
 library(Rfast)
 setwd("/Users/gianlucamastrantonio/Politecnico di Torino Staff Dropbox/Gianluca Mastrantonio/lavori/gitrepo/toroidal_projected_normal")
 source("functions/general_functions.R")
-source("functions/mcmc_tpn.R")
+source("functions/mcmc_tpn_mixture.R")
 
 
 #### #### #### #### #### ####
@@ -211,9 +211,10 @@ for (i in 1:d)
 sigma_init <- cov(y_init)
 
 
-source("functions/mcmc_tpn.R")
-Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
-out_mcmc <- mcmc_tpn(
+source("functions/mcmc_tpn_mixture.R")
+source("functions/general_functions.R")
+# Rprof("mcmc_tpn_line.out", interval = 0.01, line.profiling = TRUE)
+out_mcmc <- mcmc_tpn_mixture(
   theta = theta, # the circualr data
   burnin = 10, # burnin
   thin = 1, # thin
